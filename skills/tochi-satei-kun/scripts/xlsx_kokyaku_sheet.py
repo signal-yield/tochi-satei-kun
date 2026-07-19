@@ -290,47 +290,41 @@ def _write_kokyaku_sheet(wb: Workbook, ctx: dict):
         _set(ws, r, 3, 100, font=TMPL_FONT, border=BORDER_BOT, align=ALIGN_CENTER_H)
         r += 1
 
-        # 形状補正（2行、100/分母 形式）
+        # 形状補正（2行、上段=事例→査定対象倍率、下段=100）
         ws.merge_cells(start_row=r, start_column=2, end_row=r+1, end_column=2)
         _set(ws, r, 2, "形状補正", font=TMPL_FONT_BOLD, border=BORDER_FULL, align=ALIGN_CENTER)
         shape_mult = float(primary_h["標準化補正"])
-        # 案件評点（=mult*100）を分母に表示。倍率は 下/上 で計算
-        shape_den_val = round(shape_mult * 100, 1) if shape_mult > 0 else 100
-        if shape_den_val == int(shape_den_val):
-            shape_den_val = int(shape_den_val)
-        _set(ws, r, 3, 100, font=TMPL_FONT, border=BORDER_TOP, align=ALIGN_CENTER_H)
+        shape_num_val = round(shape_mult * 100, 1) if shape_mult > 0 else 100
+        if shape_num_val == int(shape_num_val):
+            shape_num_val = int(shape_num_val)
+        _set(ws, r, 3, shape_num_val, font=TMPL_FONT, border=BORDER_TOP, align=ALIGN_CENTER_H)
         shape_num_row = r
         r += 1
-        _set(ws, r, 3, shape_den_val, font=TMPL_FONT, border=BORDER_BOT, align=ALIGN_CENTER_H)
+        _set(ws, r, 3, 100, font=TMPL_FONT, border=BORDER_BOT, align=ALIGN_CENTER_H)
         shape_den_row = r
         r += 1
 
-        # 地域格差（2行、100/分母 形式）
+        # 地域格差（2行、上段=事例→査定対象倍率、下段=100）
         ws.merge_cells(start_row=r, start_column=2, end_row=r+1, end_column=2)
         _set(ws, r, 2, "地域格差", font=TMPL_FONT_BOLD, border=BORDER_FULL, align=ALIGN_CENTER)
         chi_mult = float(primary_h["地域格差"])
-        # 相乗積と一致する案件評点（=mult*100）を分母に
-        chi_den_val = round(chi_mult * 100, 1) if chi_mult > 0 else 100
-        if chi_den_val == int(chi_den_val):
-            chi_den_val = int(chi_den_val)
-        _set(ws, r, 3, 100, font=TMPL_FONT, border=BORDER_TOP, align=ALIGN_CENTER_H)
+        chi_num_val = round(chi_mult * 100, 1) if chi_mult > 0 else 100
+        if chi_num_val == int(chi_num_val):
+            chi_num_val = int(chi_num_val)
+        _set(ws, r, 3, chi_num_val, font=TMPL_FONT, border=BORDER_TOP, align=ALIGN_CENTER_H)
         chi_num_row = r
         r += 1
-        _set(ws, r, 3, chi_den_val, font=TMPL_FONT, border=BORDER_BOT, align=ALIGN_CENTER_H)
+        _set(ws, r, 3, 100, font=TMPL_FONT, border=BORDER_BOT, align=ALIGN_CENTER_H)
         chi_den_row = r
         r += 1
 
-        # 標準画地の試算値（Excel関数式、2行マージ）
+        # 正本補正後単価（表示丸め値、2行マージ）
         ws.merge_cells(start_row=r, start_column=2, end_row=r+1, end_column=2)
         ws.merge_cells(start_row=r, start_column=3, end_row=r+1, end_column=3)
-        _set(ws, r, 2, "標準画地の試算値",
+        _set(ws, r, 2, "正本補正後単価",
              font=TMPL_FONT_BOLD, border=BORDER_FULL, align=ALIGN_CENTER)
-        # v1.2.3: 標準化補正・地域格差は「上=100, 下=案件評点」配置 → 補正率 = 100/案件評点
-        # 即ち expr では num/den（上/下）で割る形にする
-        expr = (f"C{price_row}*C{jijo_num_row}/100*C{time_num_row}/100"
-                f"*C{shape_num_row}/C{shape_den_row}*C{chi_num_row}/C{chi_den_row}")
-        formula = f"=ROUND({expr},-(LEN(INT({expr}))-3))"
-        formula_cell = ws.cell(row=r, column=3, value=formula)
+        canonical_display = int(round(_round_3sig(assess.get("central_unit_price"))))
+        formula_cell = ws.cell(row=r, column=3, value=canonical_display)
         formula_cell.font = TMPL_FONT_SHISAN
         formula_cell.border = BORDER_FULL
         formula_cell.alignment = ALIGN_CENTER
@@ -345,7 +339,7 @@ def _write_kokyaku_sheet(wb: Workbook, ctx: dict):
         SECTION_BLUE_FONT = Font(name="ＭＳ Ｐゴシック", size=11, bold=True, color="FFFFFF")
         SECTION_BLUE_FILL = PatternFill("solid", fgColor="2F5496")
 
-        # 標準画地の試算値の下に縦並びで表示（B-C 列にセクションヘッダ）
+        # 正本補正後単価の下に縦並びで表示（B-C 列にセクションヘッダ）
         _set(ws, r, 2, "■ 個別格差",
              font=SECTION_BLUE_FONT, fill=SECTION_BLUE_FILL,
              border=BORDER_FULL, align=ALIGN_CENTER)
@@ -385,15 +379,9 @@ def _write_kokyaku_sheet(wb: Workbook, ctx: dict):
         fusei_row = r
         r += 1
 
-        # 総和（Excel関数式、黒字）— 表示中の格差行のみを積算
+        # 総和。個別格差値は説明表示のみで、価格へ再適用しない。
         _set(ws, r, 2, "総和", font=TMPL_FONT_BOLD, border=BORDER_FULL, align=ALIGN_CENTER_H)
-        factor_refs_k = []
-        if kado_row is not None:
-            factor_refs_k.append(f"(100+C{kado_row})/100")
-        factor_refs_k.append(f"(100+C{houi_row})/100")
-        factor_refs_k.append(f"(100+C{fusei_row})/100")
-        soan_formula = "=" + "*".join(factor_refs_k) + "*100"
-        soan_cell = ws.cell(row=r, column=3, value=soan_formula)
+        soan_cell = ws.cell(row=r, column=3, value=100)
         soan_cell.font = TMPL_FONT
         soan_cell.border = BORDER_FULL
         soan_cell.alignment = ALIGN_CENTER_H
@@ -405,9 +393,7 @@ def _write_kokyaku_sheet(wb: Workbook, ctx: dict):
         BLUE_BOLD_LABEL = Font(name="ＭＳ Ｐゴシック", size=11, bold=True, color="2F5496")
         _set(ws, r, 2, "案件査定価格（円/㎡）",
              font=BLUE_BOLD_LABEL, border=BORDER_FULL, align=ALIGN_CENTER_H)
-        anken_inner_k = f"C{shisan_row}*C{soan_row}"
-        anken_formula = f"=ROUND({anken_inner_k},-(LEN(INT({anken_inner_k}))-3))/100"
-        anken_cell = ws.cell(row=r, column=3, value=anken_formula)
+        anken_cell = ws.cell(row=r, column=3, value=f"=C{shisan_row}")
         anken_cell.font = TMPL_FONT_SHISAN  # red bold
         anken_cell.border = BORDER_FULL
         anken_cell.alignment = ALIGN_CENTER_H
@@ -420,6 +406,7 @@ def _write_kokyaku_sheet(wb: Workbook, ctx: dict):
              "※ 「事情補正」は売主・買主の事情が取引価格に影響している場合の調整、"
              "「時点修正」は取引時期と査定時点の地価変動による調整、"
              "「形状補正」「地域格差」はそれぞれ事例地と本物件の形状・地域条件の差を反映しています。"
+             "各補正率は表示桁に丸めているため、価格の正本は内部のフル精度補正後単価です。"
              "角地・方位・不整形のうち価格に反映する補正は正本補正後単価へ一度だけ含め、"
              "同じ補正を重ねて乗じないようにしています。",
              font=Font(name="ＭＳ Ｐゴシック", size=9, italic=True, color="595959"),

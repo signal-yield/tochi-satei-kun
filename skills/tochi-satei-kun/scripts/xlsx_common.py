@@ -243,7 +243,7 @@ def _format_price_full(total_price, area):
     if total_price is None or area is None or area <= 0:
         return ""
     total_r = _round_3sig(total_price)
-    unit_per_sqm = total_r / area
+    unit_per_sqm = total_price / area
     unit_per_sqm_r = _round_3sig(unit_per_sqm)
     unit_per_tsubo_r = _round_3sig(unit_per_sqm / 0.3025)
     return f"{total_r:,}円（{unit_per_sqm_r:,}円/㎡、{unit_per_tsubo_r:,}円/坪）"

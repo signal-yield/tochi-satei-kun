@@ -1,17 +1,21 @@
 import math
 import sys
+import json
 from datetime import date
 from pathlib import Path
 
 import pandas as pd
 import pytest
+from openpyxl import load_workbook
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from correction import apply_correction, hijun_correction_for_case
-from hedonic import _build_features
+from correction import (apply_correction, compute_target_district_mean,
+                        compute_target_station_mean, hijun_correction_for_case)
+from hedonic import _build_features, annotate_district_mean
 from load_mlit import load_mlit_csv
+from main import run_pipeline
 from time_adjust import annual_rate_for_city
 
 
@@ -117,3 +121,108 @@ def test_mlit_loader_excludes_land_with_building(tmp_path):
 def test_build_features_without_walk_min_column_uses_default():
     X = _build_features(pd.DataFrame([{"area": 100.0}]))
     assert X.iloc[0]["walk_min"] == 10.0
+
+
+def test_target_encoding_uses_adjusted_price_series_and_leave_one_out():
+    df = pd.DataFrame([
+        {"district": "D", "station": "S", "unit_price": 100.0, "adjusted_unit_price": 110.0},
+        {"district": "D", "station": "S", "unit_price": 200.0, "adjusted_unit_price": 220.0},
+        {"district": "D", "station": "S", "unit_price": 300.0, "adjusted_unit_price": 330.0},
+    ])
+    target = {"地区名": "D", "最寄駅:名称": "S"}
+    assert compute_target_district_mean(df, target) == pytest.approx(220.0)
+    assert compute_target_station_mean(df, target) == pytest.approx(220.0)
+    annotated = annotate_district_mean(df)
+    # First row excludes itself: (220 + 330) / 2.
+    assert math.exp(annotated.iloc[0]["ln_district_mean"]) == pytest.approx(275.0)
+
+
+def test_manual_corner_factor_applies_once_when_hedonic_is_skipped():
+    hed = {"ok": False, "coefficients": {}}
+    target = {"角地補正率(%)": 10}
+    corrected = apply_correction(_case(), hed, target)
+    assert corrected.iloc[0]["canonical_case_price"] == pytest.approx(1_100_000)
+    assert corrected.iloc[0]["corrected_unit_price"] == pytest.approx(1_100_000)
+
+
+def _cell_after_label(ws, label, col_offset=1):
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.value == label:
+                return ws.cell(row=cell.row, column=cell.column + col_offset)
+    raise AssertionError(f"label not found: {label}")
+
+
+def _cell_before_label(ws, label, row_offset=-1, col_offset=0):
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.value == label:
+                return ws.cell(row=cell.row + row_offset, column=cell.column + col_offset)
+    raise AssertionError(f"label not found: {label}")
+
+
+def _parse_unit_from_summary(text):
+    return int(text.split("（", 1)[1].split("円/㎡", 1)[0].replace(",", ""))
+
+
+def test_xlsx_formulas_do_not_reapply_individual_adjustments(tmp_path):
+    prop = json.loads((ROOT / "samples" / "sample_property.json").read_text(encoding="utf-8"))
+    prop["前面道路:方位"] = "南"
+    prop["土地の形状"] = "不整形"
+    prop["角地補正率(%)"] = 5
+    prop_path = tmp_path / "property_nonzero.json"
+    prop_path.write_text(json.dumps(prop, ensure_ascii=False), encoding="utf-8")
+
+    out_path = run_pipeline(
+        str(prop_path),
+        str(ROOT / "samples" / "sample_mlit.csv"),
+        str(ROOT / "samples" / "sample_koji.csv"),
+        str(ROOT / "samples" / "sample_kijun.csv"),
+        out_dir=str(tmp_path),
+        asof=date(2026, 5, 1),
+    )
+    wb = load_workbook(out_path, data_only=False)
+    gyosha = wb["業者用"]
+    kokyaku = wb["顧客用"]
+
+    all_formulas = "\n".join(
+        str(c.value) for ws in (gyosha, kokyaku) for row in ws.iter_rows()
+        for c in row if isinstance(c.value, str) and c.value.startswith("=")
+    )
+    assert "*(100+B" not in all_formulas
+    assert "*(100+C" not in all_formulas
+    assert "*B" not in all_formulas
+    assert "*C" not in all_formulas
+    assert "/C" not in all_formulas
+
+    gyosha_summary_unit = _parse_unit_from_summary(gyosha["A16"].value)
+    kokyaku_summary_unit = _parse_unit_from_summary(kokyaku["B3"].value)
+    assert gyosha_summary_unit == kokyaku_summary_unit
+
+    gyosha_soan = _cell_after_label(gyosha, "総和")
+    assert gyosha_soan.value == 100
+    gyosha_anken = _cell_before_label(gyosha, "案件査定価格(円/㎡)")
+    assert isinstance(gyosha_anken.value, str) and gyosha_anken.value.startswith("=D")
+    gyosha_ref = gyosha[gyosha_anken.value[1:]]
+    assert gyosha_ref.value == gyosha_summary_unit
+
+    kokyaku_soan = _cell_after_label(kokyaku, "総和")
+    assert kokyaku_soan.value == 100
+    kokyaku_anken = _cell_after_label(kokyaku, "案件査定価格（円/㎡）")
+    assert isinstance(kokyaku_anken.value, str) and kokyaku_anken.value.startswith("=C")
+    kokyaku_ref = kokyaku[kokyaku_anken.value[1:]]
+    assert kokyaku_ref.value == kokyaku_summary_unit
+
+    # 顧客用の標準化補正・地域格差は、上段=multiplier*100、下段=100。
+    for label in ("形状補正", "地域格差"):
+        top = _cell_after_label(kokyaku, label)
+        bottom = kokyaku.cell(row=top.row + 1, column=top.column)
+        assert bottom.value == 100
+
+    # 業者用比準表も標準化補正・地域格差は乗算方向の上段表示。
+    for header in ("標準化補正", "地域格差"):
+        header_cell = next(c for row in gyosha.iter_rows() for c in row if c.value == header)
+        top = gyosha.cell(row=header_cell.row + 1, column=header_cell.column)
+        bottom = gyosha.cell(row=header_cell.row + 2, column=header_cell.column)
+        assert bottom.value == 100
+        assert top.value != "―"

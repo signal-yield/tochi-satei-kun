@@ -115,13 +115,14 @@ def compute_target_district_mean(scoped_df, target: dict) -> float:
     """
     if scoped_df is None or len(scoped_df) == 0 or "unit_price" not in scoped_df.columns:
         return 0.0
-    overall = float(scoped_df["unit_price"].mean())
+    price_col = "adjusted_unit_price" if "adjusted_unit_price" in scoped_df.columns else "unit_price"
+    overall = float(scoped_df[price_col].mean())
     d = target.get("地区名", "")
     if not d or "district" not in scoped_df.columns:
         return overall
     matched = scoped_df[scoped_df["district"] == d]
     if len(matched) >= 3:
-        return float(matched["unit_price"].mean())
+        return float(matched[price_col].mean())
     return overall
 
 
@@ -131,13 +132,14 @@ def compute_target_station_mean(scoped_df, target: dict) -> float:
     """
     if scoped_df is None or len(scoped_df) == 0 or "unit_price" not in scoped_df.columns:
         return 0.0
-    overall = float(scoped_df["unit_price"].mean())
+    price_col = "adjusted_unit_price" if "adjusted_unit_price" in scoped_df.columns else "unit_price"
+    overall = float(scoped_df[price_col].mean())
     s = target.get("最寄駅:名称", "")
     if not s or "station" not in scoped_df.columns:
         return overall
     matched = scoped_df[scoped_df["station"] == s]
     if len(matched) >= 3:
-        return float(matched["unit_price"].mean())
+        return float(matched[price_col].mean())
     return overall
 
 
@@ -287,10 +289,11 @@ def apply_correction(cases_df: pd.DataFrame, hedonic_result: dict, target: dict)
     out = cases_df.copy()
     if not hedonic_result["ok"]:
         # 件数不足：補正なしで時点修正後単価をそのまま使う（類似度ベース集約に降格）
+        manual_factor = explicit_manual_factor(target)
         if "adjusted_unit_price" in out.columns:
-            out["corrected_unit_price"] = out["adjusted_unit_price"]
+            out["corrected_unit_price"] = out["adjusted_unit_price"] * manual_factor
         else:
-            out["corrected_unit_price"] = out["unit_price"]
+            out["corrected_unit_price"] = out["unit_price"] * manual_factor
         out["canonical_case_price"] = out["corrected_unit_price"]
         for feat in CORRECTION_FEATURES:
             out[f"correction_{feat}"] = 0.0
