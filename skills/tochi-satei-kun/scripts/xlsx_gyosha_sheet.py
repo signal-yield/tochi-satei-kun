@@ -526,8 +526,8 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
              font=Font(name="游ゴシック", size=9, italic=True, color="595959"),
              align=center_align_gy)
 
-        # = 演算子 (E列)
-        _set(ws, first_kobetsu_row, 5, "=",
+        # × 演算子 (E列)
+        _set(ws, first_kobetsu_row, 5, "×",
              font=Font(name="游ゴシック", size=14, bold=True),
              align=center_align_gy)
 

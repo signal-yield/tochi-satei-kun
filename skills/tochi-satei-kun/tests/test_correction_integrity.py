@@ -213,6 +213,8 @@ def test_xlsx_formulas_do_not_reapply_individual_adjustments(tmp_path):
     assert isinstance(gyosha_anken.value, str) and gyosha_anken.value.startswith("=D")
     gyosha_ref = gyosha[gyosha_anken.value[1:]]
     assert gyosha_ref.value == gyosha_summary_unit
+    operator_cell = gyosha.cell(row=gyosha_anken.row, column=gyosha_anken.column - 3)
+    assert operator_cell.value == "×"
 
     primary_ref = _cell_after_label(kokyaku, "規範事例の補正後単価（参考）")
     adopted_ref = _cell_after_label(kokyaku, "採用査定単価（top3正本補正後単価の中央値）")
