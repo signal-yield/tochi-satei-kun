@@ -323,6 +323,8 @@ def apply_correction(cases_df: pd.DataFrame, hedonic_result: dict, target: dict)
     out["corrected_unit_price"] = out.apply(
         lambda r: r[base_col] * math.exp(r["correction_log_total"]) * manual_factor, axis=1
     )
+    # Backward-compatible alias: corrected_unit_price is the historical column name,
+    # canonical_case_price names the same single source of truth explicitly.
     out["canonical_case_price"] = out["corrected_unit_price"]
     return out
 

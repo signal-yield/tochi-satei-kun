@@ -144,7 +144,6 @@ def test_e2e_pipeline():
     assert ok, f"顧客用シートに禁止語混入: {detected}"
     print(f"[OK] 顧客用シート禁止語チェック")
     print(f"[OK] end-to-end: {out_path}")
-    return out_path
 
 
 # ===== Layer 3 =====

@@ -54,9 +54,20 @@ def test_correction_direction_fixed_expected_value():
 def test_apply_correction_and_hijun_use_same_price_series():
     target = {"面積(㎡)": math.e**2, "間口": 6.0, "最寄駅:距離(分)": 10}
     corrected = apply_correction(_case(), _hedonic({"ln_area": 0.1}), target)
+    assert corrected["canonical_case_price"].equals(corrected["corrected_unit_price"])
     h = hijun_correction_for_case(corrected.iloc[0], _hedonic({"ln_area": 0.1}), target)
     assert h["正本補正後単価"] == pytest.approx(corrected.iloc[0]["corrected_unit_price"])
     assert h["試算値"] == pytest.approx(round(corrected.iloc[0]["corrected_unit_price"], -4), abs=10_000)
+
+
+def test_canonical_case_price_is_backward_compatible_alias_for_all_rows():
+    target = {"面積(㎡)": math.e**2, "間口": 6.0, "最寄駅:距離(分)": 10}
+    cases = pd.concat([
+        _case(unit_price=1_000_000.0, adjusted_unit_price=1_000_000.0),
+        _case(unit_price=1_200_000.0, adjusted_unit_price=1_250_000.0),
+    ], ignore_index=True)
+    corrected = apply_correction(cases, _hedonic({"ln_area": 0.1}), target)
+    assert (corrected["canonical_case_price"] == corrected["corrected_unit_price"]).all()
 
 
 def test_dir_score_and_fuseikei_are_not_double_counted():

@@ -6,8 +6,8 @@
     "url": "https://github.com/signal-yield"
   },
   "metadata": {
-    "description": "Japan's first open-source AVM — 'the Linux of AVMs' for land appraisal. White-box hedonic regression, full coefficient disclosure, GitHub MIT. By Signal Yield Advisory, a Japanese licensed real estate appraiser.",
-    "version": "1.2.9"
+    "description": "Japan's first open-source AVM — 'the Linux of AVMs' for land appraisal. White-box hedonic regression, full coefficient disclosure, Apache-2.0. By Signal Yield Advisory, a Japanese licensed real estate appraiser.",
+    "version": "1.4.3"
   },
   "plugins": [
     {
@@ -17,7 +17,7 @@
         "repo": "signal-yield/tochi-satei-kun"
       },
       "description": "Japan's first open-source AVM for land appraisal — 'the Linux of AVMs'. Re-estimates hedonic regression coefficients on every run from MLIT transaction data, fully discloses coefficients/p-values/standard errors, and generates broker-side worksheets plus client-facing assessment reports (xlsx).",
-      "version": "1.2.9",
+      "version": "1.4.3",
       "author": {
         "name": "Koichi Matsuda (Licensed Real Estate Appraiser, Japan, 2002-)",
         "email": "signalyield@gmail.com"
@@ -34,7 +34,7 @@
         "takkengyoho",
         "MLIT"
       ],
-      "license": "MIT",
+      "license": "Apache-2.0",
       "homepage": "https://github.com/signal-yield/tochi-satei-kun",
       "repository": "https://github.com/signal-yield/tochi-satei-kun"
     }

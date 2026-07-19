@@ -338,7 +338,7 @@ def _write_kokyaku_sheet(wb: Workbook, ctx: dict):
         shisan_row = r  # 標準画地の試算値 行（査定価格formula参照用）
         r += 2
 
-        # ■ 個別格差（角地・方位・不整形の本物件固有の格差を反映）
+        # ■ 個別格差（ヘドニック補正に反映済みの説明表示。価格へ再適用しない）
         # 添付参考のように、ラベルと数値を「青字」で表示して標準化補正と差別化
         BLUE_LABEL_FONT = Font(name="ＭＳ Ｐゴシック", size=11, color="2F5496")
         BLUE_VALUE_FONT = Font(name="ＭＳ Ｐゴシック", size=11, color="2F5496")

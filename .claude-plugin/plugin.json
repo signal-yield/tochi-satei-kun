@@ -1,7 +1,7 @@
 {
   "name": "tochi-satei-kun",
   "description": "Japan's first open-source AVM (Automated Valuation Model) for land appraisal — aiming to be 'the Linux of AVMs'. Re-estimates hedonic regression coefficients on every run from MLIT transaction data, fully discloses coefficients/p-values/standard errors, and generates broker-side worksheets plus client-facing assessment reports (xlsx).",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "author": {
     "name": "Koichi Matsuda",
     "email": "signalyield@gmail.com",
