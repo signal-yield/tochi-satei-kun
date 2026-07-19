@@ -55,7 +55,7 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
     r = 1
     # 認証マーカー（A1）— ハルシネーション出力との判別用、INSTALL.md 検証チェックリスト参照
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
-    _set(ws, r, 1, "tochi-satei-kun v1.4.2 認証出力",
+    _set(ws, r, 1, "tochi-satei-kun v1.4.3 認証出力",
          font=Font(name="游ゴシック", size=8, italic=True, color="808080"),
          align=Alignment(horizontal="left", vertical="center"))
     r += 1
@@ -521,7 +521,7 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
         r += 1
 
         # ====== 査定価格の算定 行（個別格差ブロックの隣、first_kobetsu_row 行から横並び）======
-        # 算定式の表示行：D=試算値, E="×", F=総和参照, G="÷ 100 ≒", H=案件査定価格
+        # 方位・不整形・明示角地は正本価格に適用済み。ここは検算用に100%を掛ける。
         # v1.2.1: 視覚アンカーは first_kobetsu_row（角地非表示時は方位の行）
 
         # 試算値 (D列、first_kobetsu_row 行)
@@ -575,9 +575,9 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
              "**角地補正は業者の入力値（デフォルト 0%）**。"
              "MLITデータに角地情報が無いためヘドニックで推定不能 → 白箱ポリシー上、自動値は与えず業者判断に委ねる。"
              "方位・不整形補正はヘドニック係数 β（dir_score, D_fuseikei）に基づく "
-             "exp(β×(本物件 − 事例)) − 1。"
-             "総和 = (1 + 角地/100) × (1 + 方位/100) × (1 + 不整形/100) × 100。"
-             "案件査定価格 = 標準画地の試算値 × 総和 / 100（上位3桁四捨五入）。",
+             "exp(β×(本物件 − 事例)) − 1 として正本価格へ1回だけ反映済み。"
+             "個別格差の総和欄は二重計上を避けるため100%とし、"
+             "案件査定価格 = 正本補正後単価（表示上は試算値）を上位3桁四捨五入。",
              font=Font(name="游ゴシック", size=9, italic=True, color="595959"),
              align=Alignment(wrap_text=True, vertical="top"))
         ws.row_dimensions[r].height = 45

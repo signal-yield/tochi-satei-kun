@@ -123,7 +123,7 @@ def _read_csv_auto_encoding(path):
 
 def load_mlit_csv(path) -> pd.DataFrame:
     """MLIT 取引価格情報 CSV を読み込み、内部標準列名の DataFrame を返す。
-    土地以外（戸建/マンション）は除外。単価欠損行は破棄。
+    宅地(土地)のみ採用し、建物込み取引は除外。単価欠損行は土地のみ行で安全に補完。
     実MLIT (cp932, 全角コロン・全角括弧) も自動対応。
     各行に CSV原本での行番号 (case_no = 1始まり) を付与し、比準表で識別子として使う。
     """
@@ -139,8 +139,8 @@ def load_mlit_csv(path) -> pd.DataFrame:
     missing = [c for c in required if c not in df.columns]
     if missing:
         raise ValueError(f"MLIT CSV 必須列欠損: {missing}")
-    # 土地のみ
-    df = df[df["type"].isin(["宅地(土地)", "宅地(土地と建物)"])].copy()
+    # 土地のみ。建物込み総額を土地単価として混入させない。
+    df = df[df["type"] == "宅地(土地)"].copy()
     # 価格情報区分（実MLITにあれば「不動産取引価格情報」のみ採用）
     if "price_info_type" in df.columns:
         df = df[df["price_info_type"] == "不動産取引価格情報"].copy()
@@ -149,9 +149,15 @@ def load_mlit_csv(path) -> pd.DataFrame:
                 "kanguchi", "road_width", "building_coverage", "floor_area_ratio"]:
         if col in df.columns:
             df[col] = df[col].apply(_to_num)
-    # 単価派生（欠損時のみ）
-    if "unit_price" not in df.columns or df["unit_price"].isna().all():
-        df["unit_price"] = df["total_price"] / df["area"]
+    # 単価派生（宅地(土地)として確認済みの行のみ）
+    if "total_price" in df.columns and "area" in df.columns:
+        missing_unit = df["unit_price"].isna()
+        safe_area = df["area"].notna() & (df["area"] > 0)
+        safe_total = df["total_price"].notna() & (df["total_price"] > 0)
+        df.loc[missing_unit & safe_area & safe_total, "unit_price"] = (
+            df.loc[missing_unit & safe_area & safe_total, "total_price"]
+            / df.loc[missing_unit & safe_area & safe_total, "area"]
+        )
     df = df[df["unit_price"].notna() & (df["unit_price"] > 0)]
     df = df[df["area"].notna() & (df["area"] > 0)]
     # 形状の正規化

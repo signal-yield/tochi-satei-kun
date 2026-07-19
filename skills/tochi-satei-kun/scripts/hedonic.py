@@ -22,6 +22,7 @@
 import math
 import pandas as pd
 import statsmodels.api as sm
+from feature_defaults import DEFAULT_FAR, DEFAULT_FRONTAGE, DEFAULT_ROAD_WIDTH, DEFAULT_WALK_MIN
 
 MIN_SAMPLES_FOR_REGRESSION = 15
 
@@ -60,36 +61,44 @@ DISTRICT_MEAN_MIN_SAMPLES = 3
 STATION_MEAN_MIN_SAMPLES = 3
 
 
-def _build_features(df: pd.DataFrame) -> pd.DataFrame:
+def _build_features(df: pd.DataFrame, feature_defaults: dict = None) -> pd.DataFrame:
     """特徴量行列を構築。MLIT既存項目を可能な限り活用。
 
     注：間口は単独では誤解を招く（広くても面積小さければ帯地）ため、
     形状指数 ln(間口²/面積) = 2*ln(間口) - ln(面積) として扱う。
     値0付近で正方形、正で横長（帯）、負で縦長（旗竿）。
     """
+    feature_defaults = feature_defaults or {}
+    default_walk = float(feature_defaults.get("walk_min", DEFAULT_WALK_MIN))
+    default_frontage = float(feature_defaults.get("kanguchi", DEFAULT_FRONTAGE))
+    default_road_width = float(feature_defaults.get("road_width", DEFAULT_ROAD_WIDTH))
+    default_far = float(feature_defaults.get("floor_area_ratio", DEFAULT_FAR))
     X = pd.DataFrame(index=df.index)
     X["ln_area"] = df["area"].apply(math.log)
     # 面積²（規模逓減項）：大規模化で単価が下がる傾向を捕捉
     X["ln_area_sq"] = X["ln_area"] ** 2
-    X["walk_min"] = df["walk_min"].fillna(
-        df["walk_min"].median() if "walk_min" in df else 10
-    )
+    if "walk_min" in df.columns:
+        walk = pd.to_numeric(df["walk_min"], errors="coerce")
+        median = walk.median() if walk.notna().any() else default_walk
+        X["walk_min"] = walk.fillna(median)
+    else:
+        X["walk_min"] = default_walk
     # 形状指数 = ln(間口²/面積) = 2·ln(間口) - ln(面積)
     if "kanguchi" in df.columns:
         kang = pd.to_numeric(df["kanguchi"], errors="coerce")
-        kang_med = kang.median() if kang.notna().any() else 6.0
+        kang_med = kang.median() if kang.notna().any() else default_frontage
         kang = kang.fillna(kang_med).clip(lower=0.5)
         X["ln_shape"] = 2 * kang.apply(math.log) - X["ln_area"]
     else:
-        X["ln_shape"] = 0.0
+        X["ln_shape"] = 2 * math.log(max(default_frontage, 0.5)) - X["ln_area"]
     # 道路幅員（対数、欠損は中央値で補完）
     if "road_width" in df.columns:
         rw = pd.to_numeric(df["road_width"], errors="coerce")
-        rw_med = rw.median() if rw.notna().any() else 5.0
+        rw_med = rw.median() if rw.notna().any() else default_road_width
         rw = rw.fillna(rw_med).clip(lower=1.0)
         X["ln_road_w"] = rw.apply(math.log)
     else:
-        X["ln_road_w"] = math.log(5.0)
+        X["ln_road_w"] = math.log(max(default_road_width, 1.0))
     # 方位スコア（北=0、南=4 の ordinal）
     X["dir_score"] = df.get("road_dir", pd.Series([""] * len(df))).apply(
         lambda v: DIR_SCORE.get(str(v).strip(), 0)
@@ -97,15 +106,17 @@ def _build_features(df: pd.DataFrame) -> pd.DataFrame:
     # 容積率（対数）：行政条件として地価に直接影響（密度・収益上限）
     if "floor_area_ratio" in df.columns:
         far = pd.to_numeric(df["floor_area_ratio"], errors="coerce")
-        far_med = far.median() if far.notna().any() else 200.0
+        far_med = far.median() if far.notna().any() else default_far
         far = far.fillna(far_med).clip(lower=1.0)
         X["ln_far"] = far.apply(math.log)
     else:
-        X["ln_far"] = math.log(200.0)
+        X["ln_far"] = math.log(max(default_far, 1.0))
     # 既存ダミー
-    X["D_shidou"] = (df.get("road_type", "") == "私道").astype(int)
-    X["D_fukuro"] = (df.get("shape", "") == "袋地").astype(int)
-    X["D_fuseikei"] = (df.get("shape", "") == "不整形").astype(int)
+    road_type = df["road_type"] if "road_type" in df.columns else pd.Series([""] * len(df), index=df.index)
+    shape = df["shape"] if "shape" in df.columns else pd.Series([""] * len(df), index=df.index)
+    X["D_shidou"] = (road_type == "私道").astype(int)
+    X["D_fukuro"] = (shape == "袋地").astype(int)
+    X["D_fuseikei"] = (shape == "不整形").astype(int)
     # 地区／駅平均単価（ターゲット符号化）：annotate_*_mean で事前に df に
     # ln_district_mean / ln_station_mean 列を付与しておく前提
     if "ln_district_mean" in df.columns:
@@ -124,10 +135,16 @@ def annotate_district_mean(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     if "district" not in out.columns or "unit_price" not in out.columns or len(out) == 0:
         return out
-    overall_mean = out["unit_price"].mean()
-    counts = out.groupby("district")["unit_price"].transform("count")
-    means = out.groupby("district")["unit_price"].transform("mean")
-    district_price = means.where(counts >= DISTRICT_MEAN_MIN_SAMPLES, overall_mean)
+    price_col = "adjusted_unit_price" if "adjusted_unit_price" in out.columns else "unit_price"
+    price = pd.to_numeric(out[price_col], errors="coerce")
+    group_sum = price.groupby(out["district"]).transform("sum")
+    group_count = price.groupby(out["district"]).transform("count")
+    overall_sum = price.sum()
+    overall_count = price.notna().sum()
+    loo_count = group_count - 1
+    district_price = (group_sum - price) / loo_count
+    overall_loo = (overall_sum - price) / (overall_count - 1) if overall_count > 1 else price.mean()
+    district_price = district_price.where(loo_count >= DISTRICT_MEAN_MIN_SAMPLES - 1, overall_loo)
     out["ln_district_mean"] = district_price.clip(lower=1.0).apply(math.log)
     return out
 
@@ -141,12 +158,25 @@ def annotate_station_mean(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     if "station" not in out.columns or "unit_price" not in out.columns or len(out) == 0:
         return out
-    overall_mean = out["unit_price"].mean()
-    counts = out.groupby("station")["unit_price"].transform("count")
-    means = out.groupby("station")["unit_price"].transform("mean")
-    station_price = means.where(counts >= STATION_MEAN_MIN_SAMPLES, overall_mean)
+    price_col = "adjusted_unit_price" if "adjusted_unit_price" in out.columns else "unit_price"
+    price = pd.to_numeric(out[price_col], errors="coerce")
+    group_sum = price.groupby(out["station"]).transform("sum")
+    group_count = price.groupby(out["station"]).transform("count")
+    overall_sum = price.sum()
+    overall_count = price.notna().sum()
+    loo_count = group_count - 1
+    station_price = (group_sum - price) / loo_count
+    overall_loo = (overall_sum - price) / (overall_count - 1) if overall_count > 1 else price.mean()
+    station_price = station_price.where(loo_count >= STATION_MEAN_MIN_SAMPLES - 1, overall_loo)
     out["ln_station_mean"] = station_price.clip(lower=1.0).apply(math.log)
     return out
+
+
+def _median_default(df: pd.DataFrame, col: str, fallback: float) -> float:
+    if col not in df.columns:
+        return fallback
+    s = pd.to_numeric(df[col], errors="coerce")
+    return float(s.median()) if s.notna().any() else fallback
 
 
 def fit_hedonic(df: pd.DataFrame) -> dict:
@@ -172,7 +202,13 @@ def fit_hedonic(df: pd.DataFrame) -> dict:
         y = df["unit_price"].apply(math.log)
     else:
         y = df["ln_adjusted_unit_price"]
-    X = _build_features(df)
+    feature_defaults = {
+        "walk_min": _median_default(df, "walk_min", DEFAULT_WALK_MIN),
+        "kanguchi": _median_default(df, "kanguchi", DEFAULT_FRONTAGE),
+        "road_width": _median_default(df, "road_width", DEFAULT_ROAD_WIDTH),
+        "floor_area_ratio": _median_default(df, "floor_area_ratio", DEFAULT_FAR),
+    }
+    X = _build_features(df, feature_defaults)
     X = sm.add_constant(X)
     try:
         model = sm.OLS(y, X).fit()
@@ -196,6 +232,7 @@ def fit_hedonic(df: pd.DataFrame) -> dict:
         "r2": float(model.rsquared),
         "adj_r2": float(model.rsquared_adj),
         "coefficients": coef,
+        "feature_defaults": feature_defaults,
         "skip_reason": None,
     }
 

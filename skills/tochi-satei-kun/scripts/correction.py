@@ -25,6 +25,7 @@ import pandas as pd
 
 # 方位スコア（hedonic.py の DIR_SCORE と同期）
 from hedonic import DIR_SCORE, SOUTH_FACING
+from feature_defaults import DEFAULT_FAR, DEFAULT_FRONTAGE, DEFAULT_ROAD_WIDTH, DEFAULT_WALK_MIN
 
 # 補正対象の特徴量（hedonic.py の FEATURE_LABELS と整合）
 CORRECTION_FEATURES = [
@@ -149,33 +150,49 @@ def _shape_index(area: float, kanguchi: float) -> float:
     return 2 * math.log(k) - math.log(a)
 
 
-def _target_feature_value(target: dict, feature: str) -> float:
+def _feature_default(hedonic_result: dict, name: str, fallback: float) -> float:
+    try:
+        return float(hedonic_result.get("feature_defaults", {}).get(name, fallback))
+    except (AttributeError, TypeError, ValueError):
+        return fallback
+
+
+def explicit_manual_factor(target: dict) -> float:
+    """User-entered factors not inferred from MLIT beta coefficients."""
+    try:
+        kado_pct = float(target.get("角地補正率(%)", 0) or 0)
+    except (TypeError, ValueError):
+        kado_pct = 0.0
+    return 1.0 + kado_pct / 100.0
+
+
+def _target_feature_value(target: dict, feature: str, hedonic_result: dict = None) -> float:
     if feature == "ln_area":
         return math.log(target["面積(㎡)"])
     if feature == "ln_area_sq":
         return math.log(target["面積(㎡)"]) ** 2
     if feature == "ln_far":
-        v = target.get("容積率(%)", 200)
+        v = target.get("容積率(%)", _feature_default(hedonic_result or {}, "floor_area_ratio", DEFAULT_FAR))
         try:
             v = float(v)
         except (TypeError, ValueError):
-            v = 200.0
+            v = _feature_default(hedonic_result or {}, "floor_area_ratio", DEFAULT_FAR)
         return math.log(max(v, 1.0))
     if feature == "walk_min":
-        return float(target.get("最寄駅:距離(分)", 10))
+        return float(target.get("最寄駅:距離(分)", _feature_default(hedonic_result or {}, "walk_min", DEFAULT_WALK_MIN)))
     if feature == "ln_shape":
-        kang = target.get("間口", 6.0)
+        kang = target.get("間口", _feature_default(hedonic_result or {}, "kanguchi", DEFAULT_FRONTAGE))
         try:
             kang = float(kang)
         except (TypeError, ValueError):
-            kang = 6.0
+            kang = _feature_default(hedonic_result or {}, "kanguchi", DEFAULT_FRONTAGE)
         return _shape_index(target["面積(㎡)"], kang)
     if feature == "ln_road_w":
-        v = target.get("前面道路:幅員(m)", 5.0)
+        v = target.get("前面道路:幅員(m)", _feature_default(hedonic_result or {}, "road_width", DEFAULT_ROAD_WIDTH))
         try:
             v = float(v)
         except (TypeError, ValueError):
-            v = 5.0
+            v = _feature_default(hedonic_result or {}, "road_width", DEFAULT_ROAD_WIDTH)
         return math.log(max(v, 1.0))
     if feature == "dir_score":
         return float(DIR_SCORE.get(str(target.get("前面道路:方位", "")).strip(), 0))
@@ -203,7 +220,7 @@ def _target_feature_value(target: dict, feature: str) -> float:
     return 0.0
 
 
-def _case_feature_value(row: pd.Series, feature: str) -> float:
+def _case_feature_value(row: pd.Series, feature: str, hedonic_result: dict = None) -> float:
     if feature == "ln_area":
         return math.log(row["area"])
     if feature == "ln_area_sq":
@@ -211,30 +228,30 @@ def _case_feature_value(row: pd.Series, feature: str) -> float:
     if feature == "ln_far":
         v = row.get("floor_area_ratio")
         if pd.isna(v) or v is None:
-            return math.log(200.0)
+            return math.log(_feature_default(hedonic_result or {}, "floor_area_ratio", DEFAULT_FAR))
         try:
             return math.log(max(float(v), 1.0))
         except (TypeError, ValueError):
-            return math.log(200.0)
+            return math.log(_feature_default(hedonic_result or {}, "floor_area_ratio", DEFAULT_FAR))
     if feature == "walk_min":
         v = row.get("walk_min")
-        return float(v) if pd.notna(v) else 10.0
+        return float(v) if pd.notna(v) else _feature_default(hedonic_result or {}, "walk_min", DEFAULT_WALK_MIN)
     if feature == "ln_shape":
         kang = row.get("kanguchi")
         if pd.isna(kang) or kang is None:
-            return 0.0
+            return _shape_index(row["area"], _feature_default(hedonic_result or {}, "kanguchi", DEFAULT_FRONTAGE))
         try:
             return _shape_index(row["area"], float(kang))
         except (TypeError, ValueError):
-            return 0.0
+            return _shape_index(row["area"], _feature_default(hedonic_result or {}, "kanguchi", DEFAULT_FRONTAGE))
     if feature == "ln_road_w":
         v = row.get("road_width")
         if pd.isna(v) or v is None:
-            return math.log(5.0)
+            return math.log(_feature_default(hedonic_result or {}, "road_width", DEFAULT_ROAD_WIDTH))
         try:
             return math.log(max(float(v), 1.0))
         except (TypeError, ValueError):
-            return math.log(5.0)
+            return math.log(_feature_default(hedonic_result or {}, "road_width", DEFAULT_ROAD_WIDTH))
     if feature == "dir_score":
         return float(DIR_SCORE.get(str(row.get("road_dir", "")).strip(), 0))
     if feature == "D_shidou":
@@ -274,6 +291,7 @@ def apply_correction(cases_df: pd.DataFrame, hedonic_result: dict, target: dict)
             out["corrected_unit_price"] = out["adjusted_unit_price"]
         else:
             out["corrected_unit_price"] = out["unit_price"]
+        out["canonical_case_price"] = out["corrected_unit_price"]
         for feat in CORRECTION_FEATURES:
             out[f"correction_{feat}"] = 0.0
         out["correction_log_total"] = 0.0
@@ -291,8 +309,8 @@ def apply_correction(cases_df: pd.DataFrame, hedonic_result: dict, target: dict)
                 per_feature[feat].append(0.0)
                 continue
             beta = coef[feat]["beta"]
-            tx = _target_feature_value(target, feat)
-            cx = _case_feature_value(row, feat)
+            tx = _target_feature_value(target, feat, hedonic_result)
+            cx = _case_feature_value(row, feat, hedonic_result)
             contrib = beta * (tx - cx)
             per_feature[feat].append(contrib)
             log_total += contrib
@@ -301,9 +319,11 @@ def apply_correction(cases_df: pd.DataFrame, hedonic_result: dict, target: dict)
     out["correction_log_total"] = log_corrections
     for feat, vals in per_feature.items():
         out[f"correction_{feat}"] = vals
+    manual_factor = explicit_manual_factor(target)
     out["corrected_unit_price"] = out.apply(
-        lambda r: r[base_col] * math.exp(r["correction_log_total"]), axis=1
+        lambda r: r[base_col] * math.exp(r["correction_log_total"]) * manual_factor, axis=1
     )
+    out["canonical_case_price"] = out["corrected_unit_price"]
     return out
 
 
@@ -347,8 +367,8 @@ def hijun_correction_for_case(row: pd.Series, hedonic_result: dict, target: dict
             if feat not in coef:
                 continue
             beta = coef[feat]["beta"]
-            tx = _target_feature_value(target, feat)
-            cx = _case_feature_value(row, feat)
+            tx = _target_feature_value(target, feat, hedonic_result)
+            cx = _case_feature_value(row, feat, hedonic_result)
             contrib = beta * (tx - cx)  # 対数空間での補正項
             mult = math.exp(contrib)
             group = HIJUN_GROUP.get(feat)
@@ -367,12 +387,10 @@ def hijun_correction_for_case(row: pd.Series, hedonic_result: dict, target: dict
     hyojunka_mult = _round_to_display(hyojunka_mult)
     chiiki_mult = _round_to_display(chiiki_mult)
 
-    # v1.2.3: 標準化補正・地域格差は「÷」で適用（鑑定書 2 行式の慣習に整合）
-    # 上=100, 下=案件評点 → 補正率 = 100/案件評点 を掛ける = 案件評点/100 で割る
-    # （hyojunka_mult, chiiki_mult が 「案件評点/100」 の意味を持つ）
-    shisan = base_price * jijo_mult * time_mult * kentsuke_mult / hyojunka_mult / chiiki_mult
-    # v1.2.5: 試算値を上位3桁に四捨五入（業者用シート冒頭の査定価格単価と整合）
-    shisan = _round_3sig(shisan)
+    canonical = row.get("canonical_case_price", row.get("corrected_unit_price"))
+    if canonical is None or pd.isna(canonical):
+        canonical = base_price * jijo_mult * time_mult * kentsuke_mult * hyojunka_mult * chiiki_mult * explicit_manual_factor(target)
+    shisan = _round_3sig(float(canonical))
 
     return {
         "事情補正": jijo_mult,
@@ -382,6 +400,7 @@ def hijun_correction_for_case(row: pd.Series, hedonic_result: dict, target: dict
         "建付減価_適用": kentsuke_apply,
         "標準化補正": hyojunka_mult,
         "地域格差": chiiki_mult,
+        "正本補正後単価": float(canonical),
         "試算値": shisan,
     }
 

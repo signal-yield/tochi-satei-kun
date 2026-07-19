@@ -93,7 +93,7 @@ def write_xlsx(ctx: dict, output_path: Path) -> Path:
     wb = Workbook()
     # Workbook プロパティに認証情報を埋め込む（Excel「ファイル → 情報 → プロパティ」で確認可能、
     # ハルシネーション出力との判別用）
-    wb.properties.creator = "tochi-satei-kun v1.4.2"
+    wb.properties.creator = "tochi-satei-kun v1.4.3"
     wb.properties.description = (
         "土地価格査定クン (tochi-satei-kun) — Apache License 2.0 OSS AVM. "
         "https://github.com/signal-yield/tochi-satei-kun"

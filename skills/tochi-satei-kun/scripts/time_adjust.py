@@ -35,7 +35,7 @@ def _annual_rate_per_standard_point(group: pd.DataFrame, asof: date = None) -> f
     if asof is not None:
         sub = g[g["price_date"] <= asof]
         if len(sub) < 2:
-            sub = g
+            return None
     else:
         sub = g
     last2 = sub.tail(2)
@@ -53,23 +53,44 @@ def _annual_rate_per_standard_point(group: pd.DataFrame, asof: date = None) -> f
     return ratio ** (1.0 / years) - 1.0
 
 
+def _annual_rate_info_per_standard_point(group: pd.DataFrame, asof: date = None) -> dict:
+    """Return rate and the exact two evidence points used for that rate."""
+    g = group.sort_values("price_date")
+    if asof is not None:
+        g = g[g["price_date"] <= asof]
+    if len(g) < 2:
+        return {"rate": None, "skip_reason": "asof以前の標準地価格が2点未満"}
+    last2 = g.tail(2)
+    rate = _annual_rate_per_standard_point(last2, None)
+    if rate is None:
+        return {"rate": None, "skip_reason": "標準地価格の変動率を計算できません"}
+    return {
+        "rate": rate,
+        "p_prev": float(last2.iloc[0]["price_per_sqm"]),
+        "p_curr": float(last2.iloc[1]["price_per_sqm"]),
+        "date_prev": last2.iloc[0]["price_date"],
+        "date_curr": last2.iloc[1]["price_date"],
+        "skip_reason": None,
+    }
+
+
 def _collect_rates(sub: pd.DataFrame, src_name: str, asof: date) -> list:
     """DataFrame から標準地ごとの1年変動率を集める。"""
     out = []
     if "標準地番号" not in sub.columns:
         return out
     for std_id, group in sub.groupby("標準地番号"):
-        r = _annual_rate_per_standard_point(group, asof)
-        if r is not None:
+        info = _annual_rate_info_per_standard_point(group, asof)
+        if info["rate"] is not None:
             out.append({
                 "id": std_id,
                 "source": src_name,
                 "district": group.iloc[0].get("district", ""),
-                "rate": r,
-                "p_prev": float(group.sort_values("price_date").tail(2).iloc[0]["price_per_sqm"]),
-                "p_curr": float(group.sort_values("price_date").tail(2).iloc[1]["price_per_sqm"]),
-                "date_prev": group.sort_values("price_date").tail(2).iloc[0]["price_date"],
-                "date_curr": group.sort_values("price_date").tail(2).iloc[1]["price_date"],
+                "rate": info["rate"],
+                "p_prev": info["p_prev"],
+                "p_curr": info["p_curr"],
+                "date_prev": info["date_prev"],
+                "date_curr": info["date_curr"],
             })
     return out
 

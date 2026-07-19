@@ -134,10 +134,11 @@ def run_pipeline(property_path: str, mlit_path: str, koji_path: str, kijun_path:
         h["個別格差_不整形"] = _kobetsu_pct(
             coef.get("D_fuseikei", {}).get("beta") if "D_fuseikei" in coef else None,
             target_fusei, case_fusei)
-        f = (1 + h["個別格差_角地"]/100) * (1 + h["個別格差_方位"]/100) * (1 + h["個別格差_不整形"]/100)
-        h["個別格差_総和_pct"] = (f - 1.0) * 100
-        h["個別格差_総和_factor"] = f * 100
-        h["案件査定価格"] = float(h["試算値"]) * f
+        # 方位・不整形は正本価格でβ補正済み。個別格差欄は説明表示に留め、
+        # 価格へ再乗算しない。角地のみ、明示入力時に apply_correction 側で1回適用。
+        h["個別格差_総和_pct"] = 0.0
+        h["個別格差_総和_factor"] = 100.0
+        h["案件査定価格"] = float(row["corrected_unit_price"])
         case_no = row.get("case_no")
         h["事例番号"] = int(case_no) if pd.notna(case_no) else (idx + 1)
         h["順位"] = "規範性の高い事例" if idx == 0 else f"類似事例{['②','③','④','⑤'][idx-1] if idx-1 < 4 else idx+1}"
@@ -163,9 +164,8 @@ def run_pipeline(property_path: str, mlit_path: str, koji_path: str, kijun_path:
     # 7. ヘドニック母集団予測
     hed_pred = _hedonic_population_predict(hed, target)
 
-    # 9. 集約（v1.2.5: hijun_rows 試算値ベースで比準表と同源に揃える）
-    shisan_df = pd.DataFrame({"corrected_unit_price": [float(h["試算値"]) for h in hijun_rows]})
-    assessment = assess(shisan_df, target["面積(㎡)"])
+    # 9. 集約：apply_correction が生成した正本価格系列をそのまま使う。
+    assessment = assess(corrected, target["面積(㎡)"])
 
     # 10. 地域標準価格チェック
     standard_check = _standard_price_for_city(
