@@ -553,7 +553,7 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
         anken_cell_gy.border = BORDER
         anken_cell_gy.alignment = center_align_gy
         anken_cell_gy.number_format = "#,##0"
-        _set(ws, first_kobetsu_row+1, 8, "案件査定価格(円/㎡)",
+        _set(ws, first_kobetsu_row+1, 8, "採用査定単価（top3中央値）",
              font=Font(name="游ゴシック", size=9, italic=True, color="595959"),
              align=center_align_gy)
 
@@ -568,8 +568,9 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
              "MLITデータに角地情報が無いためヘドニックで推定不能 → 白箱ポリシー上、自動値は与えず業者判断に委ねる。"
              "方位・不整形補正はヘドニック係数 β（dir_score, D_fuseikei）に基づく "
              "exp(β×(本物件 − 事例)) − 1 として正本価格へ1回だけ反映済み。"
-             "個別格差の総和欄は二重計上を避けるため100%とし、"
-             "案件査定価格 = 正本補正後単価（表示上は試算値）を上位3桁四捨五入。",
+             "左欄の方位・不整形等は規範事例と本物件との差を示す説明表示です。"
+             "右欄の採用査定単価はtop3の正本補正後単価の中央値であり、"
+             "左欄の値を再乗算するものではありません。",
              font=Font(name="游ゴシック", size=9, italic=True, color="595959"),
              align=Alignment(wrap_text=True, vertical="top"))
         ws.row_dimensions[r].height = 45

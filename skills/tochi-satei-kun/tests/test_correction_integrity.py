@@ -153,6 +153,14 @@ def _cell_after_label(ws, label, col_offset=1):
     raise AssertionError(f"label not found: {label}")
 
 
+def _find_cell(ws, label):
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.value == label:
+                return cell
+    raise AssertionError(f"label not found: {label}")
+
+
 def _cell_before_label(ws, label, row_offset=-1, col_offset=0):
     for row in ws.iter_rows():
         for cell in row:
@@ -201,16 +209,21 @@ def test_xlsx_formulas_do_not_reapply_individual_adjustments(tmp_path):
 
     gyosha_soan = _cell_after_label(gyosha, "総和")
     assert gyosha_soan.value == 100
-    gyosha_anken = _cell_before_label(gyosha, "案件査定価格(円/㎡)")
+    gyosha_anken = _cell_before_label(gyosha, "採用査定単価（top3中央値）")
     assert isinstance(gyosha_anken.value, str) and gyosha_anken.value.startswith("=D")
     gyosha_ref = gyosha[gyosha_anken.value[1:]]
     assert gyosha_ref.value == gyosha_summary_unit
+
+    primary_ref = _cell_after_label(kokyaku, "規範事例の補正後単価（参考）")
+    adopted_ref = _cell_after_label(kokyaku, "採用査定単価（top3正本補正後単価の中央値）")
+    assert adopted_ref.value == kokyaku_summary_unit
 
     kokyaku_soan = _cell_after_label(kokyaku, "総和")
     assert kokyaku_soan.value == 100
     kokyaku_anken = _cell_after_label(kokyaku, "案件査定価格（円/㎡）")
     assert isinstance(kokyaku_anken.value, str) and kokyaku_anken.value.startswith("=C")
     kokyaku_ref = kokyaku[kokyaku_anken.value[1:]]
+    assert kokyaku_ref.coordinate == adopted_ref.coordinate
     assert kokyaku_ref.value == kokyaku_summary_unit
 
     # 顧客用の標準化補正・地域格差は、上段=multiplier*100、下段=100。
@@ -226,3 +239,29 @@ def test_xlsx_formulas_do_not_reapply_individual_adjustments(tmp_path):
         bottom = gyosha.cell(row=header_cell.row + 2, column=header_cell.column)
         assert bottom.value == 100
         assert top.value != "―"
+
+
+def test_kokyaku_separates_primary_comparable_price_from_adopted_median(tmp_path):
+    out_path = run_pipeline(
+        str(ROOT / "samples" / "sample_property.json"),
+        str(ROOT / "samples" / "sample_mlit.csv"),
+        str(ROOT / "samples" / "sample_koji.csv"),
+        str(ROOT / "samples" / "sample_kijun.csv"),
+        out_dir=str(tmp_path),
+        asof=date(2026, 5, 1),
+    )
+    wb = load_workbook(out_path, data_only=False)
+    kokyaku = wb["顧客用"]
+    gyosha = wb["業者用"]
+
+    primary_ref = _cell_after_label(kokyaku, "規範事例の補正後単価（参考）")
+    adopted_ref = _cell_after_label(kokyaku, "採用査定単価（top3正本補正後単価の中央値）")
+    kokyaku_anken = _cell_after_label(kokyaku, "案件査定価格（円/㎡）")
+    gyosha_adopted = _cell_before_label(gyosha, "採用査定単価（top3中央値）")
+
+    assert primary_ref.value == 3750000
+    assert adopted_ref.value == 3620000
+    assert primary_ref.value != adopted_ref.value
+    assert kokyaku_anken.value == f"=C{adopted_ref.row}"
+    assert gyosha_adopted.value == f"=D{gyosha_adopted.row}"
+    assert gyosha[gyosha_adopted.value[1:]].value == adopted_ref.value

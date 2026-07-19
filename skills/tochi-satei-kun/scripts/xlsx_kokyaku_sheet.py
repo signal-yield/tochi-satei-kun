@@ -318,18 +318,32 @@ def _write_kokyaku_sheet(wb: Workbook, ctx: dict):
         chi_den_row = r
         r += 1
 
-        # 正本補正後単価（表示丸め値、2行マージ）
+        # 規範事例の補正後単価（表示丸め値、2行マージ）
         ws.merge_cells(start_row=r, start_column=2, end_row=r+1, end_column=2)
         ws.merge_cells(start_row=r, start_column=3, end_row=r+1, end_column=3)
-        _set(ws, r, 2, "正本補正後単価",
+        _set(ws, r, 2, "規範事例の補正後単価（参考）",
              font=TMPL_FONT_BOLD, border=BORDER_FULL, align=ALIGN_CENTER)
-        canonical_display = int(round(_round_3sig(assess.get("central_unit_price"))))
-        formula_cell = ws.cell(row=r, column=3, value=canonical_display)
+        primary_canonical_display = int(round(_round_3sig(primary_h["正本補正後単価"])))
+        formula_cell = ws.cell(row=r, column=3, value=primary_canonical_display)
         formula_cell.font = TMPL_FONT_SHISAN
         formula_cell.border = BORDER_FULL
         formula_cell.alignment = ALIGN_CENTER
         formula_cell.number_format = NUM_FMT
-        shisan_row = r  # 標準画地の試算値 行（査定価格formula参照用）
+        primary_canonical_row = r
+        r += 2
+
+        # 採用査定単価（top3正本補正後単価の中央値）
+        ws.merge_cells(start_row=r, start_column=2, end_row=r+1, end_column=2)
+        ws.merge_cells(start_row=r, start_column=3, end_row=r+1, end_column=3)
+        _set(ws, r, 2, "採用査定単価（top3正本補正後単価の中央値）",
+             font=TMPL_FONT_BOLD, border=BORDER_FULL, align=ALIGN_CENTER)
+        adopted_display = int(round(_round_3sig(assess.get("central_unit_price"))))
+        adopted_cell = ws.cell(row=r, column=3, value=adopted_display)
+        adopted_cell.font = TMPL_FONT_SHISAN
+        adopted_cell.border = BORDER_FULL
+        adopted_cell.alignment = ALIGN_CENTER
+        adopted_cell.number_format = NUM_FMT
+        shisan_row = r  # 案件査定価格formula参照用
         r += 2
 
         # ■ 個別格差（ヘドニック補正に反映済みの説明表示。価格へ再適用しない）
@@ -339,7 +353,7 @@ def _write_kokyaku_sheet(wb: Workbook, ctx: dict):
         SECTION_BLUE_FONT = Font(name="ＭＳ Ｐゴシック", size=11, bold=True, color="FFFFFF")
         SECTION_BLUE_FILL = PatternFill("solid", fgColor="2F5496")
 
-        # 正本補正後単価の下に縦並びで表示（B-C 列にセクションヘッダ）
+        # 採用査定単価の下に縦並びで表示（B-C 列にセクションヘッダ）
         _set(ws, r, 2, "■ 個別格差",
              font=SECTION_BLUE_FONT, fill=SECTION_BLUE_FILL,
              border=BORDER_FULL, align=ALIGN_CENTER)
@@ -407,6 +421,8 @@ def _write_kokyaku_sheet(wb: Workbook, ctx: dict):
              "「時点修正」は取引時期と査定時点の地価変動による調整、"
              "「形状補正」「地域格差」はそれぞれ事例地と本物件の形状・地域条件の差を反映しています。"
              "各補正率は表示桁に丸めているため、価格の正本は内部のフル精度補正後単価です。"
+             "規範事例の補正後単価は直前の事例・補正率に対応する参考値で、"
+             "案件査定価格はtop3正本補正後単価の中央値である採用査定単価を直接参照しています。"
              "角地・方位・不整形のうち価格に反映する補正は正本補正後単価へ一度だけ含め、"
              "同じ補正を重ねて乗じないようにしています。",
              font=Font(name="ＭＳ Ｐゴシック", size=9, italic=True, color="595959"),
