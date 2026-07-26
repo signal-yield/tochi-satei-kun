@@ -72,12 +72,25 @@
 
 ## How to Install
 
-```bash
-# Cowork Marketplace に登録
-/plugin marketplace add signal-yield/tochi-satei-kun
-/plugin install tochi-satei-kun
+SSH未設定でも導入できることを実測確認済みです（SSHキー・known_hostsの事前設定は不要）。
 
-# Python依存関係のインストール
+**対話セッション内**（Claude Code / Cowork）：
+
+```
+/plugin marketplace add signal-yield/tochi-satei-kun
+/plugin install tochi-satei-kun@tochi-satei-kun
+```
+
+**ターミナルから**（非対話CLI、上記と同等）：
+
+```bash
+claude plugin marketplace add signal-yield/tochi-satei-kun
+claude plugin install tochi-satei-kun@tochi-satei-kun
+```
+
+導入後、Python依存関係をインストールしてください：
+
+```bash
 pip install pandas statsmodels scikit-learn openpyxl
 ```
 
