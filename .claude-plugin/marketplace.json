@@ -12,10 +12,7 @@
   "plugins": [
     {
       "name": "tochi-satei-kun",
-      "source": {
-        "source": "github",
-        "repo": "signal-yield/tochi-satei-kun"
-      },
+      "source": "./",
       "description": "Japan's first open-source AVM for land appraisal — 'the Linux of AVMs'. Re-estimates hedonic regression coefficients on every run from MLIT transaction data, fully discloses coefficients/p-values/standard errors, and generates broker-side worksheets plus client-facing assessment reports (xlsx).",
       "version": "1.4.3",
       "author": {
