@@ -162,23 +162,21 @@ def test_packaged_plugin_excludes_pr_handoff_notes() -> None:
 
 
 def test_claude_plugin_related_files_are_not_part_of_codex_package() -> None:
-    changed = subprocess.run(
-        ["git", "diff", "--name-only", "main...HEAD"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.splitlines()
-    assert not any(path.startswith("claude-plugins/") for path in changed)
+    packaged_paths = [path.relative_to(PLUGIN_ROOT).as_posix() for path in PLUGIN_ROOT.rglob("*")]
+    assert not any("claude-plugins/" in path or path.startswith("claude-") for path in packaged_paths)
 
 
 def test_valuation_logic_files_are_not_changed() -> None:
-    changed = subprocess.run(
-        ["git", "diff", "--name-only", "main...HEAD"],
+    canonical_scripts = CANONICAL_SKILL / "scripts"
+    packaged_scripts = PACKAGED_SKILL / "scripts"
+    assert canonical_scripts.is_dir()
+    assert packaged_scripts.is_dir()
+
+    result = subprocess.run(
+        [sys.executable, "scripts/sync_codex_plugin_skill.py", "--check"],
         cwd=ROOT,
         capture_output=True,
         text=True,
-        check=True,
-    ).stdout.splitlines()
-    logic_prefix = f"skills/{PLUGIN_NAME}/scripts/"
-    assert not any(path.startswith(logic_prefix) for path in changed)
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
