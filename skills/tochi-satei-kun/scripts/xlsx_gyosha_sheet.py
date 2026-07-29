@@ -14,6 +14,7 @@
 
 """分割：業者用シート描画（v1.2.7、Cowork 読み込み対策）"""
 from xlsx_common import *
+from version import ENGINE_VERSION
 
 
 # ===== 業者用シート =====
@@ -55,7 +56,7 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
     r = 1
     # 認証マーカー（A1）— ハルシネーション出力との判別用、INSTALL.md 検証チェックリスト参照
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
-    _set(ws, r, 1, "tochi-satei-kun v1.4.3 認証出力",
+    _set(ws, r, 1, f"tochi-satei-kun v{ENGINE_VERSION} 認証出力",
          font=Font(name="游ゴシック", size=8, italic=True, color="808080"),
          align=Alignment(horizontal="left", vertical="center"))
     r += 1

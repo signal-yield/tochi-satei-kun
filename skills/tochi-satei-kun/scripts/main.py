@@ -41,6 +41,7 @@ from correction import (apply_correction, correction_breakdown, hijun_correction
 from hijun_breakdown import hijun_breakdown_detail  # v1.2.9: correction.py から分離
 from aggregation import assess
 from xlsx_writer import write_xlsx
+from json_writer import write_json
 
 # v1.2.9: 補助関数を main_helpers に分離
 from main_helpers import (
@@ -51,7 +52,7 @@ from main_helpers import (
 
 
 def run_pipeline(property_path: str, mlit_path: str, koji_path: str, kijun_path: str = None,
-                 out_dir: str = None, asof: date = None) -> Path:
+                 out_dir: str = None, asof: date = None, json_out_path: str = None) -> Path:
     # 1. 入力読込
     with open(property_path, encoding="utf-8") as f:
         target = json.load(f)
@@ -197,8 +198,11 @@ def run_pipeline(property_path: str, mlit_path: str, koji_path: str, kijun_path:
             selected_ids=[pt["id"] for pt in standard_check.get("selected_points", [])]
         ),
         "adjusted_full": adjusted,
+        "raw_case_count": len(df),
     }
     write_xlsx(ctx, out_path)
+    if json_out_path:
+        write_json(ctx, json_out_path)
     return out_path
 
 
@@ -232,10 +236,12 @@ def main():
                     help="基準地価CSV（任意・後方互換用。通常は指定しない）")
     ap.add_argument("--out", default=None, help="出力ディレクトリ")
     ap.add_argument("--asof", default=None, help="査定時点 YYYY-MM-DD")
+    ap.add_argument("--json-out", default=None,
+                    help="決定的JSON出力先ファイルパス（任意。Codex/Claude間の査定値突合用）")
     args = ap.parse_args()
     asof = datetime.strptime(args.asof, "%Y-%m-%d").date() if args.asof else None
     out_path = run_pipeline(args.property, args.mlit, args.koji, args.kijun,
-                            out_dir=args.out, asof=asof)
+                            out_dir=args.out, asof=asof, json_out_path=args.json_out)
     print(f"[OK] 生成完了: {out_path}")
     print("[i] 本出力は机上査定（参考値）です。不動産鑑定評価ではありません。")
     desktop_copy = _copy_to_user_desktop(out_path)
@@ -243,6 +249,8 @@ def main():
         print(f"[OK] デスクトップにコピー: {desktop_copy}")
     else:
         print("[!] デスクトップへの自動コピーに失敗しました。手動でコピーしてください。")
+    if args.json_out:
+        print(f"[OK] JSON出力: {args.json_out}")
 
 
 if __name__ == "__main__":
