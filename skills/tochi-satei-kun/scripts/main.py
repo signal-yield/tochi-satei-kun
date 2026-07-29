@@ -19,7 +19,7 @@ v1.2.9 で、koji/kijun の標準価格計算・公示番号変換等の補助�
 プラグイン配布層によるファイル truncate を回避するため。
 
 使い方:
-    python main.py <property.json> <mlit.csv> <koji.csv> <kijun.csv> [--out <dir>] [--asof YYYY-MM-DD]
+    python main.py <property.json> <mlit.csv> <koji.csv> [<kijun.csv>] [--out <dir>] [--asof YYYY-MM-DD]
 """
 import argparse
 import json
@@ -50,7 +50,7 @@ from main_helpers import (
 )
 
 
-def run_pipeline(property_path: str, mlit_path: str, koji_path: str, kijun_path: str,
+def run_pipeline(property_path: str, mlit_path: str, koji_path: str, kijun_path: str = None,
                  out_dir: str = None, asof: date = None) -> Path:
     # 1. 入力読込
     with open(property_path, encoding="utf-8") as f:
@@ -64,7 +64,7 @@ def run_pipeline(property_path: str, mlit_path: str, koji_path: str, kijun_path:
 
     df = load_mlit_csv(mlit_path)
     koji = load_koji_auto(koji_path)
-    kijun = load_kijun_auto(kijun_path)
+    kijun = load_kijun_auto(kijun_path) if kijun_path else None
 
     # 2. スコープ
     scoped, scope_log = scope_dataframe(df, target, asof)
@@ -228,7 +228,8 @@ def main():
     ap.add_argument("property", help="査定対象物件JSON")
     ap.add_argument("mlit", help="MLIT 取引価格情報CSV")
     ap.add_argument("koji", help="公示地価CSV")
-    ap.add_argument("kijun", help="基準地価CSV")
+    ap.add_argument("kijun", nargs="?", default=None,
+                    help="基準地価CSV（任意・後方互換用。通常は指定しない）")
     ap.add_argument("--out", default=None, help="出力ディレクトリ")
     ap.add_argument("--asof", default=None, help="査定時点 YYYY-MM-DD")
     args = ap.parse_args()
