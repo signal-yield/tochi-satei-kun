@@ -1,0 +1,40 @@
+{
+  "name": "tochi-satei-kun",
+  "version": "1.4.3",
+  "description": "Apache-2.0 local-first OSS tool for preliminary Japanese land brokerage valuation support that generates Excel and JSON outputs from user-provided MLIT transaction data and L01 land-price-publication data.",
+  "author": {
+    "name": "Signal Yield Advisory / Koichi Matsuda",
+    "url": "https://github.com/signal-yield/tochi-satei-kun"
+  },
+  "homepage": "https://github.com/signal-yield/tochi-satei-kun",
+  "repository": "https://github.com/signal-yield/tochi-satei-kun",
+  "license": "Apache-2.0",
+  "keywords": [
+    "real-estate",
+    "land",
+    "brokerage",
+    "excel",
+    "json",
+    "local-first",
+    "japan"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "tochi-satei-kun - Land Brokerage Valuation Support",
+    "shortDescription": "Generate inspectable Excel and JSON outputs for preliminary Japanese land brokerage valuation support.",
+    "longDescription": "tochi-satei-kun is an Apache-2.0 local-first OSS tool for preliminary Japanese land brokerage valuation support. It runs locally, uses white-box hedonic regression and comparable transaction analysis, and generates Excel and JSON outputs from user-provided property, MLIT transaction, and L01 land-price-publication files. The tool itself does not send input files to external services. Outputs are not real-estate appraisal opinions; users must separately verify site conditions, legal restrictions, rights, and other material facts, and the final decision remains with the user.",
+    "developerName": "Signal Yield Advisory / Koichi Matsuda",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/signal-yield/tochi-satei-kun",
+    "defaultPrompt": [
+      "土地査定クンで媒介査定の一次検討用ExcelとJSONを作成して",
+      "MLIT取引価格情報CSVと地価公示L01データから土地査定書を作成して",
+      "土地査定クンの正規CLIでJSON出力まで実行して"
+    ],
+    "brandColor": "#0B6E4F"
+  }
+}

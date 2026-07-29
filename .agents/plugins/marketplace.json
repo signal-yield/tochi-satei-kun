@@ -1,0 +1,20 @@
+{
+  "name": "signal-yield",
+  "interface": {
+    "displayName": "Signal Yield Advisory"
+  },
+  "plugins": [
+    {
+      "name": "tochi-satei-kun",
+      "source": {
+        "source": "local",
+        "path": "./plugins/tochi-satei-kun"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

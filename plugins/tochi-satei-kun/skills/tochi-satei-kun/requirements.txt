@@ -1,0 +1,5 @@
+pandas>=2.0
+numpy>=1.24
+statsmodels>=0.14
+scikit-learn>=1.3
+openpyxl>=3.1
