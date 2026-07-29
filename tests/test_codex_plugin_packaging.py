@@ -21,7 +21,7 @@ def load_json(path: Path) -> dict:
 
 
 def included_files(root: Path) -> set[Path]:
-    ignored_names = {"__pycache__", ".DS_Store", ".pytest_cache", "output", "tests"}
+    ignored_names = {"__pycache__", ".DS_Store", ".pytest_cache", "output", "tests", "PR_HANDOFF.md"}
     ignored_suffixes = {".pyc", ".pyo"}
     return {
         path.relative_to(root)
@@ -155,6 +155,10 @@ def test_no_private_or_secret_artifacts_are_packaged() -> None:
         and (path.name in forbidden_names or path.suffix.lower() in forbidden_suffixes)
     ]
     assert packaged == []
+
+
+def test_packaged_plugin_excludes_pr_handoff_notes() -> None:
+    assert not (PACKAGED_SKILL / "PR_HANDOFF.md").exists()
 
 
 def test_claude_plugin_related_files_are_not_part_of_codex_package() -> None:

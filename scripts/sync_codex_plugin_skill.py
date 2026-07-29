@@ -12,7 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SOURCE = REPO_ROOT / "skills" / "tochi-satei-kun"
 DESTINATION = REPO_ROOT / "plugins" / "tochi-satei-kun" / "skills" / "tochi-satei-kun"
-IGNORED_NAMES = {"__pycache__", ".DS_Store", ".pytest_cache", "output", "tests"}
+IGNORED_NAMES = {"__pycache__", ".DS_Store", ".pytest_cache", "output", "tests", "PR_HANDOFF.md"}
 IGNORED_SUFFIXES = {".pyc", ".pyo"}
 
 
@@ -60,6 +60,7 @@ def sync() -> None:
             ".pytest_cache",
             "output",
             "tests",
+            "PR_HANDOFF.md",
         ),
     )
 
