@@ -190,11 +190,10 @@ def test_xlsx_formulas_do_not_reapply_individual_adjustments(tmp_path):
         asof=date(2026, 5, 1),
     )
     wb = load_workbook(out_path, data_only=False)
-    gyosha = wb["業者用"]
-    kokyaku = wb["顧客用"]
+    gyosha = wb["確認用"]
 
     all_formulas = "\n".join(
-        str(c.value) for ws in (gyosha, kokyaku) for row in ws.iter_rows()
+        str(c.value) for row in gyosha.iter_rows()
         for c in row if isinstance(c.value, str) and c.value.startswith("=")
     )
     assert "*(100+B" not in all_formulas
@@ -204,8 +203,6 @@ def test_xlsx_formulas_do_not_reapply_individual_adjustments(tmp_path):
     assert "/C" not in all_formulas
 
     gyosha_summary_unit = _parse_unit_from_summary(gyosha["A16"].value)
-    kokyaku_summary_unit = _parse_unit_from_summary(kokyaku["B3"].value)
-    assert gyosha_summary_unit == kokyaku_summary_unit
 
     gyosha_soan = _cell_after_label(gyosha, "総和")
     assert gyosha_soan.value == 100
@@ -216,25 +213,7 @@ def test_xlsx_formulas_do_not_reapply_individual_adjustments(tmp_path):
     operator_cell = gyosha.cell(row=gyosha_anken.row, column=gyosha_anken.column - 3)
     assert operator_cell.value == "×"
 
-    primary_ref = _cell_after_label(kokyaku, "規範事例の補正後単価（参考）")
-    adopted_ref = _cell_after_label(kokyaku, "採用査定単価（top3正本補正後単価の中央値）")
-    assert adopted_ref.value == kokyaku_summary_unit
-
-    kokyaku_soan = _cell_after_label(kokyaku, "総和")
-    assert kokyaku_soan.value == 100
-    kokyaku_anken = _cell_after_label(kokyaku, "案件査定価格（円/㎡）")
-    assert isinstance(kokyaku_anken.value, str) and kokyaku_anken.value.startswith("=C")
-    kokyaku_ref = kokyaku[kokyaku_anken.value[1:]]
-    assert kokyaku_ref.coordinate == adopted_ref.coordinate
-    assert kokyaku_ref.value == kokyaku_summary_unit
-
-    # 顧客用の標準化補正・地域格差は、上段=multiplier*100、下段=100。
-    for label in ("形状補正", "地域格差"):
-        top = _cell_after_label(kokyaku, label)
-        bottom = kokyaku.cell(row=top.row + 1, column=top.column)
-        assert bottom.value == 100
-
-    # 業者用比準表も標準化補正・地域格差は乗算方向の上段表示。
+    # 確認用比準表の標準化補正・地域格差は乗算方向の上段表示。
     for header in ("標準化補正", "地域格差"):
         header_cell = next(c for row in gyosha.iter_rows() for c in row if c.value == header)
         top = gyosha.cell(row=header_cell.row + 1, column=header_cell.column)
@@ -243,7 +222,8 @@ def test_xlsx_formulas_do_not_reapply_individual_adjustments(tmp_path):
         assert top.value != "―"
 
 
-def test_kokyaku_separates_primary_comparable_price_from_adopted_median(tmp_path):
+def test_kakunin_adopted_unit_price_is_the_top3_median_not_the_primary_case(tmp_path):
+    """採用査定単価は top3 の中央値であり、規範性の高い事例（top1）の単価とは別物。"""
     out_path = run_pipeline(
         str(ROOT / "samples" / "sample_property.json"),
         str(ROOT / "samples" / "sample_mlit.csv"),
@@ -253,17 +233,24 @@ def test_kokyaku_separates_primary_comparable_price_from_adopted_median(tmp_path
         asof=date(2026, 5, 1),
     )
     wb = load_workbook(out_path, data_only=False)
-    kokyaku = wb["顧客用"]
-    gyosha = wb["業者用"]
+    kakunin = wb["確認用"]
 
-    primary_ref = _cell_after_label(kokyaku, "規範事例の補正後単価（参考）")
-    adopted_ref = _cell_after_label(kokyaku, "採用査定単価（top3正本補正後単価の中央値）")
-    kokyaku_anken = _cell_after_label(kokyaku, "案件査定価格（円/㎡）")
-    gyosha_adopted = _cell_before_label(gyosha, "採用査定単価（top3中央値）")
+    adopted_cell = _cell_before_label(kakunin, "採用査定単価（top3中央値）")
+    # 「採用査定単価」欄は 3 桁丸めされた値を参照する数式で入る
+    assert isinstance(adopted_cell.value, str) and adopted_cell.value.startswith("=D")
+    adopted_value = kakunin[adopted_cell.value[1:]].value
+    assert adopted_value == 3620000
 
-    assert primary_ref.value == 3750000
-    assert adopted_ref.value == 3620000
-    assert primary_ref.value != adopted_ref.value
-    assert kokyaku_anken.value == f"=C{adopted_ref.row}"
-    assert gyosha_adopted.value == f"=D{gyosha_adopted.row}"
-    assert gyosha[gyosha_adopted.value[1:]].value == adopted_ref.value
+    # 比準表の試算値（G列）。表示順は [top2, top1, top3] で、中央行が規範性の高い事例。
+    header = _find_cell(kakunin, "試算値(円/㎡)")
+    trial_values = []
+    for offset in (1, 3, 5):
+        raw = kakunin.cell(row=header.row + offset, column=header.column).value
+        trial_values.append(int(str(raw).replace(",", "")))
+    assert len(trial_values) == 3
+
+    # 採用査定単価は 3 件の試算値の中央値であり、中央行（規範性の高い事例）の値ではない
+    assert adopted_value == sorted(trial_values)[1]
+    assert adopted_value != trial_values[1], (
+        "中央行（top1）の試算値と採用査定単価が一致してしまい、中央値採用であることを検証できない"
+    )
