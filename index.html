@@ -380,15 +380,15 @@
         <span class="feature-tag">WHITE-BOX</span>
         <h3>査定根拠を「すべて」開示——係数も、比準表の内訳も</h3>
         <p>
-          査定価格を導いたすべての計算根拠を業者用シートに収録。<strong>ヘドニック回帰の回帰係数（β・p値・標準誤差）と統計量</strong>に加え、<strong>比準表の内訳（採用3事例の選定理由・補正率・各事例の試算値・採用価格の算出経路）</strong>も完全に開示。これが本スキルの中核設計思想「<strong>白箱方式</strong>」（white-box AVM）です。
+          査定価格を導いたすべての計算根拠を確認用シートに収録。<strong>ヘドニック回帰の回帰係数（β・p値・標準誤差）と統計量</strong>に加え、<strong>比準表の内訳（採用3事例の選定理由・補正率・各事例の試算値・採用価格の算出経路）</strong>も完全に開示。これが本スキルの中核設計思想「<strong>白箱方式</strong>」（white-box AVM）です。
         </p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">②</div>
         <span class="feature-tag">WORKFLOW</span>
-        <h3>業者用＋附属資料・グラフ＋顧客用、3シート構成xlsxを一括出力</h3>
+        <h3>確認用＋グラフ、2シート構成xlsxを一括出力</h3>
         <p>
-          同じ案件・同じ根拠データから、用途別に3シートを生成。<strong>業者用シート</strong>は係数・統計量・比準表（鑑定書様式2行式）・2価格サマリを全開示、<strong>附属資料・グラフシート</strong>は5年価格推移グラフ・ヘドニック係数β棒グラフ・散布図で視覚的に検証可能、<strong>顧客用シート</strong>は売主提示用に「ですます調」「係数・統計用語非表示」で整形（流推方式準拠）。査定→提案までを1ツールで完結。
+          同じ案件・同じ根拠データから2シートを生成。<strong>確認用シート</strong>は係数・統計量・比準表（鑑定書様式2行式）・2価格サマリ・重要事項（机上査定の前提と免責）を全開示、<strong>グラフシート</strong>は5年価格推移グラフ・ヘドニック係数β棒グラフ・散布図で視覚的に検証可能。人が入力・採用事例・警告・計算結果を確認するための出力です。
         </p>
       </div>
       <div class="feature-card">
@@ -429,8 +429,8 @@
       <div class="flow-step">
         <div class="flow-step-num">3</div>
         <h3>出力</h3>
-        <p>業者用シート（係数全開示）＋附属資料・グラフシート（視覚検証用）＋顧客用シート（流推方式準拠）の3シート構成xlsxを生成。業者の査定書として利用可能。</p>
-        <code>xlsx 3シート</code>
+        <p>確認用シート（係数全開示・比準表・重要事項）＋グラフシート（視覚検証用）の2シート構成xlsxを生成。</p>
+        <code>xlsx 2シート</code>
       </div>
     </div>
   </div>
@@ -453,9 +453,9 @@
         <div style="font-size:13px;font-weight:600;color:#b45309;margin-bottom:10px;letter-spacing:.04em">本物判定の4条件（いずれか欠けていたらスキルONを確認の上、再実行）</div>
         <ul style="list-style:none;padding:0;margin:0;font-size:13px;color:#1c1917;line-height:1.9">
           <li style="padding:4px 0;border-bottom:1px dashed #e7e5e4"><strong style="color:#1a3a52">①</strong> ファイルサイズ <strong>40KB以上</strong>（10〜20KBは捏造の疑い）</li>
-          <li style="padding:4px 0;border-bottom:1px dashed #e7e5e4"><strong style="color:#1a3a52">②</strong> シート <strong>3枚構成</strong>（業者用 / 附属資料・グラフ / 顧客用）</li>
-          <li style="padding:4px 0;border-bottom:1px dashed #e7e5e4"><strong style="color:#1a3a52">③</strong> 業者用シート A1セルに <strong><code style="background:#f5f5f4;padding:2px 6px;border-radius:4px;font-family:'SF Mono',Consolas,monospace;font-size:12px">tochi-satei-kun v1.4.3 認証出力</code></strong> マーカー</li>
-          <li style="padding:4px 0"><strong style="color:#1a3a52">④</strong> 業者用シートに <strong>「■ ヘドニック回帰サマリ」</strong> セクション</li>
+          <li style="padding:4px 0;border-bottom:1px dashed #e7e5e4"><strong style="color:#1a3a52">②</strong> シート <strong>2枚構成</strong>（確認用 / グラフ）</li>
+          <li style="padding:4px 0;border-bottom:1px dashed #e7e5e4"><strong style="color:#1a3a52">③</strong> 確認用シート A1セルに <strong><code style="background:#f5f5f4;padding:2px 6px;border-radius:4px;font-family:'SF Mono',Consolas,monospace;font-size:12px">tochi-satei-kun v1.4.3 出力</code></strong> の表示（どのバージョンで作成された出力かを確認するための表示）</li>
+          <li style="padding:4px 0"><strong style="color:#1a3a52">④</strong> 確認用シートに <strong>「■ ヘドニック回帰サマリ」</strong> セクション</li>
         </ul>
       </div>
     </div>
@@ -467,12 +467,12 @@
   <div class="container">
     <div class="section-header">
       <span class="section-eyebrow">出力サンプル</span>
-      <h2>業者用 ＋ 附属資料・グラフ ＋ 顧客用</h2>
-      <p>同じ案件・同じ根拠データから、用途別に3シート構成のxlsxを生成します。</p>
+      <h2>確認用 ＋ グラフ</h2>
+      <p>同じ案件・同じ根拠データから2シート構成のxlsxを生成します。</p>
     </div>
     <div class="outputs" style="grid-template-columns:repeat(3,1fr);max-width:1100px;gap:20px">
       <div class="output-card">
-        <span class="output-label">① 業者用シート</span>
+        <span class="output-label">① 確認用シート</span>
         <h3>係数全開示・検証可能</h3>
         <p style="color:var(--c-text-muted);font-size:14px">ヘドニック回帰の全係数と比準表を収録。社内検討・顧客説明・監査対応のための「説明可能・検証可能」フォーマット。</p>
         <ul>
@@ -494,19 +494,6 @@
           <li>散布図：駅距離 vs 単価<br>　全事例青／比較事例top3赤／査定価格緑</li>
           <li>各グラフの統計的解釈メモ</li>
           <li>白箱方式の根拠を1ページで可視化</li>
-        </ul>
-      </div>
-      <div class="output-card">
-        <span class="output-label client">③ 顧客用シート</span>
-        <h3>売主提示用に整形（流推方式準拠）</h3>
-        <p style="color:var(--c-text-muted);font-size:14px">「ですます調」「係数・統計用語非表示」で売主提示用に整形。そのまま媒介取得時の説明資料として使えるレイアウト。</p>
-        <ul>
-          <li>査定価格のサマリと価格レンジ</li>
-          <li>主比準取引事例1件（要点）</li>
-          <li>定性的記述（「面積はやや広め」「駅距離は同水準」等）</li>
-          <li>用途地域・建築可能規模の概要</li>
-          <li>査定の前提条件・留意事項</li>
-          <li>仲介業者（御社）の連絡先欄</li>
         </ul>
       </div>
     </div>
@@ -540,8 +527,8 @@
   <div class="container">
     <div class="section-header">
       <span class="section-eyebrow">信頼性確保の仕組み</span>
-      <h2>🛡️ 顧客用シート末尾に「重要事項」セクションを自動付加</h2>
-      <p>本スキルは、出力xlsxの<strong>顧客用シート末尾に「机上査定の前提と免責」セクションを自動付加</strong>します。査定書として売主に提示する際の法的位置付けを、現役不動産鑑定士が設計しました。</p>
+      <h2>🛡️ 確認用シート末尾に「重要事項」セクションを自動付加</h2>
+      <p>本スキルは、出力xlsxの<strong>確認用シート末尾に「机上査定の前提と免責」セクションを自動付加</strong>します。出力の法的位置付けを、現役不動産鑑定士が設計しました。</p>
     </div>
     <div style="max-width:920px;margin:0 auto;background:#fff;border:1px solid #e7e5e4;border-radius:12px;padding:32px 36px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
       <ul style="list-style:none;padding:0;margin:0">
@@ -642,7 +629,7 @@
       <details class="faq-item">
         <summary class="faq-q">本スキルの特徴は？</summary>
         <div class="faq-a">
-          本スキルは<strong>Apache 2.0で公開する初のオープンソースAVM</strong>（当社調べ・2026年5月時点）として、3つの特徴を備えています。①<strong>コード・ヘドニック回帰係数・比準表の内訳のすべてを Apache License 2.0 で公開</strong>（TensorFlow・Kubernetesと同じ業界標準ライセンス、特許保護条項付き）。②<strong>市区町村単位で物件ごとに都度回帰</strong>（固定係数・pre-trainedモデルではない）。③査定根拠を係数まで遡って業者用シートに収録する<strong>白箱方式</strong>。「AVM界のLinux」を目指し、コミュニティで育てるOSSとして運用しています。
+          本スキルは<strong>Apache 2.0で公開する初のオープンソースAVM</strong>（当社調べ・2026年5月時点）として、3つの特徴を備えています。①<strong>コード・ヘドニック回帰係数・比準表の内訳のすべてを Apache License 2.0 で公開</strong>（TensorFlow・Kubernetesと同じ業界標準ライセンス、特許保護条項付き）。②<strong>市区町村単位で物件ごとに都度回帰</strong>（固定係数・pre-trainedモデルではない）。③査定根拠を係数まで遡って確認用シートに収録する<strong>白箱方式</strong>。「AVM界のLinux」を目指し、コミュニティで育てるOSSとして運用しています。
         </div>
       </details>
 

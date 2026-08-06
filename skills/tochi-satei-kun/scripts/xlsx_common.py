@@ -43,6 +43,8 @@ __all__ = [
     "SHORT_FEATURE_LABELS",
     # forbidden_words
     "assert_clean",
+    # 円建て金額の整数化（JSON 出力と共通）
+    "round_money",
     # スタイル定数
     "TITLE_FONT", "TITLE_FILL", "SECTION_FONT", "SECTION_FILL",
     "LABEL_FONT", "VALUE_FONT", "BIG_VALUE_FONT",
@@ -77,6 +79,7 @@ SHORT_FEATURE_LABELS = {
 }
 
 from forbidden_words import assert_clean
+from money import round_money
 
 # ===== スタイル =====
 TITLE_FONT = Font(name="游ゴシック", size=14, bold=True, color="FFFFFF")
@@ -100,7 +103,7 @@ BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
 def _format_jpy(v):
     if v is None:
         return ""
-    return f"{int(round(v)):,}円"
+    return f"{round_money(v):,}円"
 
 
 _CITY_CODE_TO_SHORT = {
