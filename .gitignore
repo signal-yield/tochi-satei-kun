@@ -24,6 +24,10 @@ Thumbs.db
 # Local data (do NOT commit user MLIT/公示 CSVs)
 *.csv
 !skills/tochi-satei-kun/samples/sample_*.csv
+!.claude-plugin/plugins/tochi-satei-kun/skills/tochi-satei-kun/samples/sample_kijun.csv
+!.claude-plugin/plugins/tochi-satei-kun/skills/tochi-satei-kun/samples/sample_koji.csv
+!.claude-plugin/plugins/tochi-satei-kun/skills/tochi-satei-kun/samples/sample_mlit.csv
+!.claude-plugin/plugins/tochi-satei-kun/skills/tochi-satei-kun/samples/sample_mlit_small.csv
 *.geojson
 
 # Local handoff / session notes
