@@ -211,9 +211,24 @@ See [LICENSE](./LICENSE) and [NOTICE](./NOTICE) for full terms.
 Signal Yield Advisory
 〒106-0032 東京都港区六本木３－１６－１２ 六本木KSビル５F
 
-- 📧 [signalYield@gmail.com](mailto:signalYield@gmail.com)
+- 📧 [signalyield@gmail.com](mailto:signalyield@gmail.com)
 - 📝 [note.com/matsudansyaku](https://note.com/matsudansyaku)
 - 💼 [VisasQ プロフィール](https://expert.visasq.com/profile/#/)
+
+---
+
+## ご相談 / Consulting
+
+査定ロジックの設計や検証（ヘドニック係数の読み方、補正項目の組み方、出力の妥当性チェックなど）について、有償でご相談を受けています。自社データでの試算や社内導入の進め方も、同じ窓口でお受けします。
+
+※ お受けするのは査定ロジックに関する技術的な助言です。『不動産の鑑定評価に関する法律』に基づく鑑定評価の受託窓口ではありません。
+
+Paid consulting is available on the design and validation of land-assessment logic, such as interpreting hedonic coefficients, structuring adjustment factors, and reviewing the plausibility of outputs. Questions about running the tool on your own data or rolling it out internally are welcome through the same channel.
+
+Note: This covers technical advice on assessment logic only. It is not a channel for commissioning formal real estate appraisals under Japanese appraisal law.
+
+- 📧 [signalyield@gmail.com](mailto:signalyield@gmail.com)
+- 🔗 [real-estate-dx-ai-lp.vercel.app](https://real-estate-dx-ai-lp.vercel.app)
 
 ---
 
