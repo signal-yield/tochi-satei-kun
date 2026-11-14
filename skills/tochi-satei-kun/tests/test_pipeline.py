@@ -123,26 +123,21 @@ def test_e2e_pipeline():
     assert out_path.exists(), f"xlsx未生成: {out_path}"
 
     wb = load_workbook(out_path)
-    assert "業者用" in wb.sheetnames, "業者用シートなし"
-    assert "顧客用" in wb.sheetnames, "顧客用シートなし"
+    assert wb.sheetnames == ["確認用", "グラフ"], f"シート構成が想定外: {wb.sheetnames}"
 
-    # 業者用シートには係数開示があるはず
-    gyosha = wb["業者用"]
-    gyosha_text = "\n".join(
-        str(c.value) for row in gyosha.iter_rows() for c in row if c.value is not None
+    # 確認用シートには係数開示があるはず
+    kakunin = wb["確認用"]
+    kakunin_text = "\n".join(
+        str(c.value) for row in kakunin.iter_rows() for c in row if c.value is not None
     )
-    assert "ヘドニック" in gyosha_text or "サンプル数" in gyosha_text, \
-        "業者用シートに回帰サマリ記載なし"
-    print(f"[OK] 業者用シートに回帰サマリあり")
+    assert "ヘドニック" in kakunin_text or "サンプル数" in kakunin_text, \
+        "確認用シートに回帰サマリ記載なし"
+    print(f"[OK] 確認用シートに回帰サマリあり")
 
-    # 顧客用シートに禁止語が含まれていないこと
-    kokyaku = wb["顧客用"]
-    kokyaku_text = "\n".join(
-        str(c.value) for row in kokyaku.iter_rows() for c in row if c.value is not None
-    )
-    ok, detected = check_text(kokyaku_text)
-    assert ok, f"顧客用シートに禁止語混入: {detected}"
-    print(f"[OK] 顧客用シート禁止語チェック")
+    # 重要事項（机上査定の前提と免責）が確認用シートに残っていること
+    assert "重要事項（机上査定の前提と免責）" in kakunin_text, \
+        "確認用シートに重要事項セクションなし"
+    print(f"[OK] 確認用シートに重要事項セクションあり")
     print(f"[OK] end-to-end: {out_path}")
 
 

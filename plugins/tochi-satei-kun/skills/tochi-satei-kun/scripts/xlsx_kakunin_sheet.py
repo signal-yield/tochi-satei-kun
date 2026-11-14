@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""分割：業者用シート描画（v1.2.7、Cowork 読み込み対策）"""
+"""分割：確認用シート描画（v1.2.7、Cowork 読み込み対策）"""
 from xlsx_common import *
 from version import ENGINE_VERSION
 
 
-# ===== 業者用シート =====
-def _write_gyosha_sheet(wb: Workbook, ctx: dict):
-    ws = wb.create_sheet("業者用")
+# ===== 確認用シート =====
+def _write_kakunin_sheet(wb: Workbook, ctx: dict):
+    ws = wb.create_sheet("確認用")
     # 列幅を冒頭で設定（Cowork 配布層 truncate 対策。末尾の再設定もそのまま残す）
     _adjust_col_widths(ws, [14, 10, 12, 16, 12, 14, 12, 16, 10, 10, 10, 10, 12, 10])
     # 印刷範囲を冒頭で暫定設定（Cowork 配布層 truncate 対策。
     # 末尾で `r` の正確値に上書きするが、truncate された場合に備えてマージン付き暫定値を先に置く）
     ws.print_area = "A1:N200"
-    # グラフ専用シートを 業者用 の直後（インデックス 1）に作成
+    # グラフ専用シートを 確認用 の直後（インデックス 1）に作成
     graph_ws = wb.create_sheet("グラフ", 1)
     # グラフシートのタイトル
     _set(graph_ws, 1, 1, "■ 附属資料",
@@ -54,16 +54,17 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
     hijun_detail_rows = ctx.get("hijun_detail_rows", [])
 
     r = 1
-    # 認証マーカー（A1）— ハルシネーション出力との判別用、INSTALL.md 検証チェックリスト参照
+    # ツール名とバージョンの表示（A1）— どのツールのどのバージョンで作成された出力かを
+    # 確認するための表示。電子署名や真正性検証の仕組みではない（INSTALL.md 参照）。
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
-    _set(ws, r, 1, f"tochi-satei-kun v{ENGINE_VERSION} 認証出力",
+    _set(ws, r, 1, f"tochi-satei-kun v{ENGINE_VERSION} 出力",
          font=Font(name="游ゴシック", size=8, italic=True, color="808080"),
          align=Alignment(horizontal="left", vertical="center"))
     r += 1
 
     # タイトル（A2）
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
-    _set(ws, r, 1, f"土地価格査定 業者用シート — {target.get('物件略号', '')} ({target['市区町村名']} {target.get('地区名', '')})",
+    _set(ws, r, 1, f"土地価格査定 確認用シート — {target.get('物件略号', '')} ({target['市区町村名']} {target.get('地区名', '')})",
          font=TITLE_FONT, fill=TITLE_FILL,
          align=Alignment(horizontal="left", vertical="center"))
     ws.row_dimensions[r].height = 28
@@ -143,7 +144,7 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
             conf_label = "モデル適合度：中程度（" + " / ".join(reasons) + "）"
             conf_fill = P_MID_FILL
     else:
-        conf_label = "モデル適合度：参考情報（件数不足のため係数推定不能。顧客用シートは『参考情報』として出力）"
+        conf_label = "モデル適合度：参考情報（件数不足のため係数推定不能。本シートは『参考情報』として扱う）"
         conf_fill = P_HIGH_FILL
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
     _set(ws, r, 1, conf_label,
@@ -170,7 +171,8 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
          font=Font(name="游ゴシック", size=10, bold=True),
          fill=PRIMARY_FILL, border=True)
     if central_unit:
-        _set(ws, r, 2, f"{int(central_unit):,}円",
+        # JSON 出力と同じ round_money を通す（int() 切り捨てだと採用単価が 1 円ずれる）
+        _set(ws, r, 2, f"{round_money(central_unit):,}円",
              font=Font(name="游ゴシック", size=10, bold=True), fill=PRIMARY_FILL, border=True)
         _set(ws, r, 3, _format_jpy(central_unit * target_area_local),
              font=Font(name="游ゴシック", size=10, bold=True), fill=PRIMARY_FILL, border=True)
@@ -192,7 +194,7 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
             dev_guide = ("※ 30%超：規範性の高い事例が母集団から外れている可能性。"
                          "事例選定と特徴量を再確認してください。")
         _set(ws, r, 1, "② ヘドニック母集団予測", font=VALUE_FONT, border=True)
-        _set(ws, r, 2, f"{int(hed_pred):,}円", font=VALUE_FONT, border=True)
+        _set(ws, r, 2, f"{round_money(hed_pred):,}円", font=VALUE_FONT, border=True)
         _set(ws, r, 3, _format_jpy(hed_pred * target_area_local), font=VALUE_FONT, border=True)
         _set(ws, r, 4, f"{dev:+.1f}%", font=VALUE_FONT, fill=dev_fill, border=True)
         r += 1
@@ -439,7 +441,7 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
         ws.row_dimensions[r].height = 50
         r += 2
 
-    # ■ 個別格差 + 査定価格の算定（業者用：縦並び個別格差 + 横並び算定式）
+    # ■ 個別格差 + 査定価格の算定（確認用：縦並び個別格差 + 横並び算定式）
     if hijun_rows:
         # 規範性の高い事例（top1）の個別格差を採用
         primary_h_gy = next((h for h in hijun_rows if h.get("順位") == "規範性の高い事例"),
@@ -650,7 +652,7 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
         ws.row_dimensions[r].height = 30
         r += 2
 
-    # ■ 公示価格の概要（業者用：取引事例の概要と同様の横並びテーブル）
+    # ■ 公示価格の概要（確認用：取引事例の概要と同様の横並びテーブル）
     # 地域標準価格チェックで選定された公示標準地の詳細属性を表示
     koji_points_for_summary = standard_check.get("selected_points", []) if standard_check else []
     if koji_points_for_summary:
@@ -840,7 +842,7 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
             if p < 0.05: fill = P_LOW_FILL; sig = "** (p<0.05)"
             elif p < 0.10: fill = P_MID_FILL; sig = "*  (p<0.10)"
             else: fill = P_HIGH_FILL; sig = "ns"
-            # 表示用：業者用シート column 1〜5（簡潔ラベル + 数値）
+            # 表示用：確認用シート column 1〜5（簡潔ラベル + 数値）
             _set(ws, r, 1, c["label"], font=VALUE_FONT, border=True)
             _set(ws, r, 2, float(c['beta']), font=VALUE_FONT, border=True,
                  number_format='+0.0000;-0.0000;0.0000')
@@ -877,7 +879,7 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
         bar.legend = None
         bar.height = 10  # cm
         bar.width = 16   # cm
-        # チャートは業者用シートの column 1（特徴量名）と column 2（β値）を直接参照
+        # チャートは確認用シートの column 1（特徴量名）と column 2（β値）を直接参照
         data_ref = Reference(ws, min_col=2, min_row=coef_data_start,
                              max_col=2, max_row=coef_data_end)
         cats_ref = Reference(ws, min_col=1, min_row=coef_data_start,
@@ -1087,9 +1089,88 @@ def _write_gyosha_sheet(wb: Workbook, ctx: dict):
         # スキップして次のセクションへ進む（データ書き込みは右側列なので r は変えない）
         r += 2
 
+    r = _write_important_notes(ws, r, asof)
+
     _adjust_col_widths(ws, [14, 10, 12, 16, 12, 14, 12, 16, 10, 10, 10, 10, 12, 10])
     # 印刷範囲を明示指定（散布図用の隠しデータ R-W 列 / row 1671 までを印刷から除外）
     ws.print_area = f"A1:N{r}"
 
 
-# ===== 顧客用シート =====
+def _write_important_notes(ws, r, asof):
+    """■ 重要事項（机上査定の前提と免責）を確認用シート末尾に書き出す。
+
+    シート構成を 確認用 + グラフ の 2 枚へ整理した際、従来この免責文を載せていた
+    顧客用シートを廃止した。免責文自体は出力に残す必要があるため、確認用シートの
+    末尾へ移設している。
+    """
+    r += 1
+    _insert_page_break(ws, r)
+    _section_header(ws, r, "■ 重要事項（机上査定の前提と免責）")
+    r += 1
+
+    def _para(text, height, label):
+        nonlocal r
+        assert_clean(text, label)
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
+        _set(ws, r, 1, text, font=VALUE_FONT,
+             align=Alignment(wrap_text=True, vertical="top"))
+        ws.row_dimensions[r].height = height
+        r += 1
+
+    # 1) 自動生成・鑑定評価書ではない
+    _para(
+        "本書はご入力いただいた情報および国土交通省「不動産取引価格情報」「地価公示」等の"
+        "公開データに基づき、ソフトウェアにより自動生成した机上査定です。"
+        "本査定額は自動算出によるものであり、不動産鑑定評価基準に基づく不動産鑑定評価書ではなく、"
+        "個別の不動産鑑定士による判断を経たものでもありません。",
+        70, "important note 1")
+
+    # 2) 行っていない調査
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
+    _set(ws, r, 1, "本査定では、以下の調査を行っておりません。",
+         font=Font(name="游ゴシック", size=10, bold=True))
+    r += 1
+    for s in [
+        "対象不動産の現地調査（外観・内部・接道・近隣環境・越境・境界等）",
+        "役所調査（公法上の規制、道路種別、インフラ、開発許可、建築確認履歴等）",
+        "法務局調査（登記・公図・地積測量図・権利関係の精査）",
+        "賃貸借契約・修繕履歴・個別契約条件の精査",
+        "土壌汚染・地下埋設物・アスベスト等の物的リスク調査",
+    ]:
+        assert_clean(s, "skipped survey")
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
+        _set(ws, r, 1, f"　・{s}", font=VALUE_FONT)
+        r += 1
+    r += 1
+
+    # 3) 参考価格としての位置づけ
+    _para(
+        "本査定額は、入力情報の正確性および公開情報の精度に依存する参考価格であり、"
+        "実際の成約価格、金融機関の担保評価額、税務評価額、不動産鑑定評価額とは異なる場合があります。"
+        "個別の減価要因（境界未確定、越境、再建築不可、心理的瑕疵、土壌汚染等）が存在する場合、"
+        "査定額は大きく変動します。",
+        60, "important note 3")
+
+    # 4) 利用範囲制限
+    _para(
+        "本書は、利用者様ご自身の検討用途にのみご利用いただくものとし、"
+        "第三者への提示・交付、訴訟・調停等の証拠資料、金融機関への提出資料、税務申告等の用途には使用できません。"
+        "これらの用途には、不動産鑑定士による鑑定評価書の取得を推奨いたします。"
+        "なお、本ツールの開発者が不動産鑑定士の資格を有していても、本書の出力が不動産鑑定評価であることを意味しません。",
+        50, "important note 4")
+
+    # 5) 損害免責
+    _para(
+        "本書の利用に起因して利用者様または第三者に生じた損害について、"
+        "本ソフトウェア提供元およびその運営者は一切の責任を負いません。"
+        "詳細は別途定める利用規約をご確認ください。",
+        40, "important note 5")
+
+    r += 1
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=8)
+    _set(ws, r, 1, f"価格時点：{asof.isoformat()}",
+         font=Font(name="游ゴシック", size=12, bold=True))
+    return r + 1
+
+
+

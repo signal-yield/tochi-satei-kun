@@ -19,7 +19,8 @@ cases / assess 等）を正本として、そのまま JSON へ写し取る。�
 査定計算を行わない（値は既存パイプラインの結果をそのまま整形するのみ）。
 
 丸めルール（表示上のみ。査定計算そのものは変更しない）：
-- 円建ての金額（単価・総額）: 整数円に丸め（Python の round、偶数丸め）
+- 円建ての金額（単価・総額）: `money.round_money()`（四捨五入で整数円）。
+  xlsx 出力と同じヘルパーを共有し、同じ査定値から同じ整数が出るようにしている。
 - 変動率・類似度・R²・回帰係数等の比率: 小数第6位に丸め
 """
 import json
@@ -30,13 +31,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from money import round_money
 from scope import DEFAULT_COMPARISON_MONTHS
 from version import ENGINE_VERSION
 
 SCHEMA_VERSION = "1.0"
 ENGINE_NAME = "tochi-satei-kun"
 
-MONEY_NDIGITS = 0
 RATE_NDIGITS = 6
 
 _SUBJECT_FIELD_MAP = [
@@ -92,10 +93,8 @@ def to_json_safe(value):
 
 
 def _round_money(value):
-    v = to_json_safe(value)
-    if v is None:
-        return None
-    return int(round(float(v), MONEY_NDIGITS))
+    """xlsx 出力と共通の整数化（money.round_money）。差異を作らないため直接 round しない。"""
+    return round_money(to_json_safe(value))
 
 
 def _round_rate(value):
